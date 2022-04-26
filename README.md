@@ -3,6 +3,8 @@
 ESP32-Arduino based device to send sensors data to cloud with websocket connection.
 
 
+![IoT-Gateway](images/iot-device.png)
+
 ## Features
   1. WiFi connectivity to sync with server
   2. RS485 port to collect data from client devices
