@@ -14,7 +14,32 @@ enum DevWorkModes {
 #define DEFAULT_SERVER_PORT 80
 #define DEFAULT_OTA_ADMIN_PASS "admin"
 
+
+// LED stuff
+#define LED_PIN 18
+#define BUTTON_PIN 19
+
+// DHT
+// Digital pin connected to the DHT sensor
+#define DHT_PIN 23
+#define DHT_TYPE DHT11
+
+// LCD
 #define LCD_ENABLED
+
+#define MODBUS_ENABLED
+#define MAX_MODBUS_SLAVES 3
+#define MAX_ADDRESSES_PER_MODBUS_SLAVE 5
+#define MODBUS_BAUDRATE 9600
+#define MODBUS_RX_PIN 16
+#define MODBUS_TX_PIN 17
+#define MODBUS_RTS_PIN 5
+
+typedef struct {
+  uint8_t func_code;
+  uint16_t address;
+  uint8_t length;
+} modbus_address_t;
 
 typedef struct {
   uint8_t hw_ver;
@@ -28,6 +53,10 @@ typedef struct {
 
   float cal_coefficients[6];
   float cal_offsets[6];
+
+  uint8_t modbus_enabled;
+  uint8_t modbus_slave_ids[MAX_MODBUS_SLAVES];
+  modbus_address_t modbus_address[MAX_MODBUS_SLAVES][MAX_ADDRESSES_PER_MODBUS_SLAVE];
 
 } config_t;
 
@@ -148,6 +177,26 @@ class DevConfig {
         key[3] = '0' + i;
         data.cal_offsets[i] = this->prefs->getFloat(key, 0);
       }
+
+      data.modbus_enabled = this->prefs->getChar("modbusEnabled");
+
+      strcpy(key, "mdb0");
+      for (uint8_t i=0; i < MAX_MODBUS_SLAVES; i++) {
+        key[3] = '0' + i;
+        key[4] = '\0';
+        data.modbus_slave_ids[i] = this->prefs->getChar(key);
+
+        for (uint8_t k=0; k < MAX_ADDRESSES_PER_MODBUS_SLAVE; k++) {
+          key[4] = '0' + k;
+          key[6] = '\0';
+          key[5] = 'f';
+          data.modbus_address[i][k].func_code = this->prefs->getChar(key);
+          key[5] = 'a';
+          data.modbus_address[i][k].address = this->prefs->getUShort(key);
+          key[5] = 'l';
+          data.modbus_address[i][k].length = this->prefs->getChar(key);
+        }
+      }
       this->prefs->end();
     }
 
@@ -183,9 +232,27 @@ class DevConfig {
         key[3] = '0' + i;
         this->prefs->putFloat(key, data.cal_offsets[i]);
       }
+
+      this->prefs->putChar("modbusEnabled", data.modbus_enabled);
+      strcpy(key, "mdb0");
+      for (uint8_t i=0; i < MAX_MODBUS_SLAVES; i++) {
+        key[3] = '0' + i;
+        key[4] = '\0';
+        this->prefs->putChar(key, data.modbus_slave_ids[i]);
+
+        for (uint8_t k=0; k < MAX_ADDRESSES_PER_MODBUS_SLAVE; k++) {
+          key[4] = '0' + k;
+          key[6] = '\0';
+          key[5] = 'f';
+          this->prefs->putChar(key, data.modbus_address[i][k].func_code);
+          key[5] = 'a';
+          this->prefs->putUShort(key, data.modbus_address[i][k].address);
+          key[5] = 'l';
+          this->prefs->putChar(key, data.modbus_address[i][k].length);
+        }
+      }
       this->prefs->end();
     };
-
 };
 
 #endif

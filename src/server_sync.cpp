@@ -138,10 +138,56 @@ public:
           case 6:
             config->data.server_port = val;
             break;
+          // Enable/disable modbus
+          case 7:
+            config->data.modbus_enabled = val;
+            break;
         }
 
         config->set_config();
         return 3;
+      } else if (message_str.startsWith("MODBUS[")) {
+        // MODBUS[slave_idx,slave_id] [{function_code,address,length},{function_code,address,length}...]
+        Serial.println("process reponse modbus config");
+        uint8_t idx = int(message_data[7] - '0');
+        uint8_t slave_id = int(message_data[9] - '0');
+        uint8_t str_length = strlen(message_data);
+        message_str = message_str.substring(13, str_length - 1);
+        // this leaves message_str with {function_code,address,length},{function_code,address,length}...
+        Serial.println(idx);
+        Serial.println(slave_id);
+        Serial.println(message_str);
+
+        if (idx >=0 && idx < MAX_MODBUS_SLAVES) {
+          uint8_t message_addr_idx = 0;
+          str_length = message_str.length();
+          config->data.modbus_slave_ids[idx] = slave_id;
+          while (str_length > 0 && message_addr_idx < MAX_ADDRESSES_PER_MODBUS_SLAVE) {
+            int8_t end_idx = message_str.indexOf('}');
+            if (end_idx < 0) {
+              break;
+            }
+            message_str[end_idx] = '\0';
+            message_str.toCharArray(message_data, 200, 0);
+            sscanf(
+              message_data,
+              "{%hu,%u,%hu",
+              &(config->data.modbus_address[idx][message_addr_idx].func_code),
+              &(config->data.modbus_address[idx][message_addr_idx].address),
+              &(config->data.modbus_address[idx][message_addr_idx].length)
+            );
+            message_addr_idx += 1;
+            end_idx = message_str.indexOf('{');
+            if (end_idx < 0) {
+              break;
+            }
+            message_str = message_str.substring(end_idx, str_length - 1);
+            str_length = message_str.length();
+          }
+          config->set_config();
+          return 5;
+        }
+        return 0;
       } else if (message_str.startsWith("SYNC")) {
         return 4;
       }

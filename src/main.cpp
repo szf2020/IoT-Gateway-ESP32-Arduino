@@ -16,11 +16,10 @@
 #include "server_sync.cpp"
 // #include "lcd.cpp"
 
-// LED stuff
-#define LED_PIN 18
-#define BUTTON_PIN 19
-#define DHTPIN 23 // Digital pin connected to the DHT sensor
-#define DHTTYPE DHT11
+#ifdef MODBUS_ENABLED
+#include "modbushandler.cpp"
+#endif
+
 uint8_t led_status = 0;
 uint8_t button_status = 0;
 
@@ -32,8 +31,12 @@ Preferences preferences;
 DevConfig dev_config;
 ServerSync server_sync;
 Meter meter;
-DHT dht(DHTPIN, DHTTYPE);
+DHT dht(DHT_PIN, DHT_TYPE);
 DHTMeter dht_meter;
+
+#ifdef MODBUS_ENABLED
+  ModbusHandler modbus_handler;
+#endif
 
 enum WiFiState
 {
@@ -71,13 +74,13 @@ char* prepare_data_buffer() {
   sprintf(
     server_sync.shared_buffer,
     "{"
-    "\"config\": { \"hwVer\": %hu, \"swVer\": %hu, \"devId\": %u, \"mac\": \"%s\" },"
+    "\"config\": { \"hwVer\": %hu, \"swVer\": %hu, \"devId\": %u, \"workmode\": %hu, \"mac\": \"%s\" },"
     "\"adc\": { \"1\": %u, \"2\": %u, \"3\": %u, \"4\": %u, \"5\": %u, \"6\": %u },"
     "\"dht\": { \"state\": %hu, \"temperature\": %.2f, \"humidity\": %.2f, \"hic\": %.2f },"
     "\"meters\": { \"1\": %.2f, \"2\": %.2f, \"3\": %.2f, \"4\": %.2f, \"5\": %.2f, \"6\": %.2f },"
     "\"network\": { \"state\": %hu, \"ip\": \"%hu.%hu.%hu.%hu\", \"tts\": %u }"
     "}",
-    dev_config.data.hw_ver, dev_config.data.sw_ver, dev_config.data.dev_id, mac_address,
+    dev_config.data.hw_ver, dev_config.data.sw_ver, dev_config.data.dev_id, dev_config.data.work_mode, mac_address,
     meter.adc_rms_values[0], meter.adc_rms_values[1], meter.adc_rms_values[2],
     meter.adc_rms_values[3], meter.adc_rms_values[4], meter.adc_rms_values[5],
     dht_meter.dht_state, dht_meter.temperature, dht_meter.humidity, dht_meter.hic,
@@ -100,15 +103,35 @@ char* prepare_config_data_buffer() {
       "\"workMode\": %hu, \"heartbeatFreq\": %u,"
       "\"serverIp\": \"%s\", \"serverPort\": %u,"
       "\"calCoefficients\": [%.2f, %.2f, %.2f, %.2f, %.2f, %.2f],"
-      "\"calOffsets\": [%.2f, %.2f, %.2f, %.2f, %.2f, %.2f]"
-      "}}",
+      "\"calOffsets\": [%.2f, %.2f, %.2f, %.2f, %.2f, %.2f],"
+      "\"modbus\": {\"enabled\": %hu, \"slaves\": [%hu, %hu, %hu],"
+      "\"slave_1\": [[%hu,%u,%hu],[%hu,%u,%hu],[%hu,%u,%hu],[%hu,%u,%hu],[%hu,%u,%hu]],"
+      "\"slave_2\": [[%hu,%u,%hu],[%hu,%u,%hu],[%hu,%u,%hu],[%hu,%u,%hu],[%hu,%u,%hu]],"
+      "\"slave_3\": [[%hu,%u,%hu],[%hu,%u,%hu],[%hu,%u,%hu],[%hu,%u,%hu],[%hu,%u,%hu]]"
+      "}}}",
       dev_config.data.hw_ver, dev_config.data.sw_ver, dev_config.data.dev_id, mac_address,
       dev_config.data.work_mode, dev_config.data.heartbeat_freq,
       dev_config.data.server_ip, dev_config.data.server_port,
       dev_config.data.cal_coefficients[0], dev_config.data.cal_coefficients[1], dev_config.data.cal_coefficients[2],
       dev_config.data.cal_coefficients[3], dev_config.data.cal_coefficients[4], dev_config.data.cal_coefficients[5],
       dev_config.data.cal_offsets[0], dev_config.data.cal_offsets[1], dev_config.data.cal_offsets[2],
-      dev_config.data.cal_offsets[3], dev_config.data.cal_offsets[4], dev_config.data.cal_offsets[5]
+      dev_config.data.cal_offsets[3], dev_config.data.cal_offsets[4], dev_config.data.cal_offsets[5],
+      dev_config.data.modbus_enabled, dev_config.data.modbus_slave_ids[0], dev_config.data.modbus_slave_ids[1], dev_config.data.modbus_slave_ids[2],
+      dev_config.data.modbus_address[0][0].func_code, dev_config.data.modbus_address[0][0].address, dev_config.data.modbus_address[0][0].length,
+      dev_config.data.modbus_address[0][1].func_code, dev_config.data.modbus_address[0][1].address, dev_config.data.modbus_address[0][1].length,
+      dev_config.data.modbus_address[0][2].func_code, dev_config.data.modbus_address[0][2].address, dev_config.data.modbus_address[0][2].length,
+      dev_config.data.modbus_address[0][3].func_code, dev_config.data.modbus_address[0][3].address, dev_config.data.modbus_address[0][3].length,
+      dev_config.data.modbus_address[0][4].func_code, dev_config.data.modbus_address[0][4].address, dev_config.data.modbus_address[0][4].length,
+      dev_config.data.modbus_address[1][0].func_code, dev_config.data.modbus_address[1][0].address, dev_config.data.modbus_address[1][0].length,
+      dev_config.data.modbus_address[1][1].func_code, dev_config.data.modbus_address[1][1].address, dev_config.data.modbus_address[1][1].length,
+      dev_config.data.modbus_address[1][2].func_code, dev_config.data.modbus_address[1][2].address, dev_config.data.modbus_address[1][2].length,
+      dev_config.data.modbus_address[1][3].func_code, dev_config.data.modbus_address[1][3].address, dev_config.data.modbus_address[1][3].length,
+      dev_config.data.modbus_address[1][4].func_code, dev_config.data.modbus_address[1][4].address, dev_config.data.modbus_address[1][4].length,
+      dev_config.data.modbus_address[2][0].func_code, dev_config.data.modbus_address[2][0].address, dev_config.data.modbus_address[2][0].length,
+      dev_config.data.modbus_address[2][1].func_code, dev_config.data.modbus_address[2][1].address, dev_config.data.modbus_address[2][1].length,
+      dev_config.data.modbus_address[2][2].func_code, dev_config.data.modbus_address[2][2].address, dev_config.data.modbus_address[2][2].length,
+      dev_config.data.modbus_address[2][3].func_code, dev_config.data.modbus_address[2][3].address, dev_config.data.modbus_address[2][3].length,
+      dev_config.data.modbus_address[2][4].func_code, dev_config.data.modbus_address[2][4].address, dev_config.data.modbus_address[2][4].length
   );
 
   return server_sync.shared_buffer;
@@ -387,11 +410,16 @@ void onMessageCallback(WebsocketsMessage message)
   uint8_t cmd = server_sync.process_response(message);
 
   if (cmd == 0) {
-
-  } else if (cmd == 1 || cmd == 4) {
+  } else if (cmd == 4) {
     char *buffer = prepare_data_buffer();
     web_socket_client.send(buffer);
-  } else if (cmd == 2 || cmd == 3) {
+    #ifdef MODBUS_ENABLED
+    buffer = modbus_handler.update();
+    Serial.print("Modbus: ");
+    Serial.println(buffer);
+    #endif
+    web_socket_client.send(buffer);
+  } else if (cmd == 2 || cmd == 3 || cmd == 5) {
     char *buffer = prepare_config_data_buffer();
     web_socket_client.send(buffer);
     // Config is updated. Reinitialize the web socket.
@@ -445,6 +473,16 @@ void update_websocket(void *params)
       buffer = server_sync.get_heartbeat();
       web_socket_client.send(buffer);
       server_sync.send_success();
+      if (dev_config.data.work_mode == SIMPLE_CLIENT) {
+        char *buffer = prepare_data_buffer();
+        web_socket_client.send(buffer);
+        #ifdef MODBUS_ENABLED
+        buffer = modbus_handler.update();
+        Serial.print("Modbus: ");
+        Serial.println(buffer);
+        #endif
+        web_socket_client.send(buffer);
+      }
     }
     vTaskDelay(1000);
   }
@@ -463,6 +501,10 @@ void setup()
   dht_meter = DHTMeter(&dht);
 
   lcd_init(1);
+
+  #ifdef MODBUS_ENABLED
+  modbus_handler.init(&dev_config);
+  #endif
 
   xTaskCreate(
       initialise_wifi,   /* Task function. */
