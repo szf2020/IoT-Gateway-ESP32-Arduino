@@ -64,7 +64,7 @@ public:
   uint8_t process_response(WebsocketsMessage message) {
 
     char message_data[200];
-    String message_str;
+    String message_str, message_str_temp;
     if (message.isText()) {
       message_str = message.data();
       message_str.toCharArray(message_data, 200, 0);
@@ -167,21 +167,26 @@ public:
             if (end_idx < 0) {
               break;
             }
-            message_str[end_idx] = '\0';
-            message_str.toCharArray(message_data, 200, 0);
+            message_str_temp = message_str.substring(0, end_idx+1);
+            // Serial.print("processing str: ");
+            // Serial.println(message_str_temp);
+            // Serial.println(message_str);
+            message_str_temp.toCharArray(message_data, 200, 0);
             sscanf(
               message_data,
-              "{%hu,%u,%hu",
+              "{%hu,%u,%hu}",
               &(config->data.modbus_address[idx][message_addr_idx].func_code),
               &(config->data.modbus_address[idx][message_addr_idx].address),
               &(config->data.modbus_address[idx][message_addr_idx].length)
             );
             message_addr_idx += 1;
+            message_str = message_str.substring(end_idx, str_length);
+            str_length = message_str.length();
             end_idx = message_str.indexOf('{');
             if (end_idx < 0) {
               break;
             }
-            message_str = message_str.substring(end_idx, str_length - 1);
+            message_str = message_str.substring(end_idx, str_length);
             str_length = message_str.length();
           }
           config->set_config();

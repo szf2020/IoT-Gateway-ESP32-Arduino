@@ -43,6 +43,7 @@ class ModbusHandler {
 
     char* update() {
       uint8_t result;
+      uint8_t is_first_address = 1;
       bool valid_func = 0;
       this->buffer_index = 0;
       this->buffer_index += sprintf(this->data_buffer, "{\"modbus\":{");
@@ -82,9 +83,14 @@ class ModbusHandler {
                 //   this->config->data.modbus_address[i][k].length,
                 //   result
                 // );
+                if (is_first_address == 1) {
+                  is_first_address = 0;
+                } else {
+                  this->buffer_index += sprintf(&this->data_buffer[this->buffer_index], ",");
+                }
                 this->buffer_index += sprintf(
                   &this->data_buffer[this->buffer_index],
-                  "\"%hu:%hu:%u:%hu\":\"%hu,",
+                  "\"%hu:%hu:%u:%hu\":\"%hu",
                   this->config->data.modbus_slave_ids[i],
                   this->config->data.modbus_address[i][k].func_code,
                   this->config->data.modbus_address[i][k].address,
@@ -96,12 +102,12 @@ class ModbusHandler {
                   for(uint8_t j = 0; j < this->config->data.modbus_address[i][k].length; j++) {
                     this->buffer_index += sprintf(
                       &this->data_buffer[this->buffer_index],
-                      "%d,",
+                      ",%d",
                       this->node->getResponseBuffer(j)
                     );
                   }
                 }
-                this->buffer_index += sprintf(&this->data_buffer[this->buffer_index], "\",");
+                this->buffer_index += sprintf(&this->data_buffer[this->buffer_index], "\"");
               }
             }
           }
