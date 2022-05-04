@@ -46,7 +46,7 @@ class ModbusHandler {
       uint8_t is_first_address = 1;
       bool valid_func = 0;
       this->buffer_index = 0;
-      this->buffer_index += sprintf(this->data_buffer, "{\"modbus\":{");
+      this->buffer_index += sprintf(this->data_buffer, "{");
       if (this->config->data.modbus_enabled == 1) {
         for (uint8_t i=0; i < MAX_MODBUS_SLAVES; i++) {
           if (this->config->data.modbus_slave_ids[i] != 0) {
@@ -113,7 +113,7 @@ class ModbusHandler {
           }
         }
       }
-      this->buffer_index += sprintf(&this->data_buffer[this->buffer_index], "}}");
+      this->buffer_index += sprintf(&this->data_buffer[this->buffer_index], "}");
       return this->data_buffer;
     }
 };

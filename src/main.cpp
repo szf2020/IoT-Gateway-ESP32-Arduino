@@ -93,6 +93,16 @@ char* prepare_data_buffer() {
 
 }
 
+char* prepare_modbus_data_buffer(char *modbus_data) {
+  sprintf(
+    server_sync.shared_buffer,
+    "{\"config\":{\"hwVer\":%hu,\"swVer\":%hu,\"devId\":%u,\"workmode\":%hu,\"mac\":\"%s\"},\"modbus_data\":%s}",
+    dev_config.data.hw_ver, dev_config.data.sw_ver, dev_config.data.dev_id, dev_config.data.work_mode, mac_address,
+    modbus_data
+  );
+  return server_sync.shared_buffer;
+}
+
 char* prepare_config_data_buffer() {
 
   ip = WiFi.localIP();
@@ -478,6 +488,7 @@ void update_websocket(void *params)
         web_socket_client.send(buffer);
         #ifdef MODBUS_ENABLED
         buffer = modbus_handler.update();
+        buffer = prepare_modbus_data_buffer(buffer);
         Serial.print("Modbus: ");
         Serial.println(buffer);
         #endif
