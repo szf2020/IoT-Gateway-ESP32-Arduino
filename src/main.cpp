@@ -184,8 +184,8 @@ void lcd_init(uint8_t display_message=0) {
     vTaskDelay(10);
     display_message_lcd(0, "IoT Gateway", 1);
     snprintf(
-      ui_buffer, 16, "ID:%u V:%hu.%hu",
-      dev_config.data.dev_id, dev_config.data.hw_ver, dev_config.data.sw_ver
+      ui_buffer, 16, "ID:%u M:%hu V:%hu.%hu",
+      dev_config.data.dev_id, dev_config.data.work_mode, dev_config.data.hw_ver, dev_config.data.sw_ver
     );
     display_message_lcd(1, ui_buffer);
     Serial.println(ui_buffer);
@@ -276,31 +276,31 @@ void update_user_interface(void *params)
         Serial.println(ui_buffer);
         ui_state = 3;
       } else if (ui_state == 3) {
-        snprintf(ui_buffer, 16, "M1:%u", meter.adc_rms_values[0]);
+        snprintf(ui_buffer, 16, "A1:%u M1:%.1f", meter.adc_rms_values[0], meter.meter_values[0]);
         // lcd.display_message(0, ui_buffer);
         display_message_lcd(0, ui_buffer, 1);
         Serial.println(ui_buffer);
-        snprintf(ui_buffer, 16, "M2:%u", meter.adc_rms_values[1]);
+        snprintf(ui_buffer, 16, "A2:%u M2:%.1f", meter.adc_rms_values[1], meter.meter_values[1]);
         // lcd.display_message(1, ui_buffer);
         display_message_lcd(1, ui_buffer);
         Serial.println(ui_buffer);
         ui_state = 4;
       } else if (ui_state == 4) {
-        snprintf(ui_buffer, 16, "M3:%u", meter.adc_rms_values[2]);
+        snprintf(ui_buffer, 16, "A3:%u M3:%.1f", meter.adc_rms_values[2], meter.meter_values[2]);
         // lcd.display_message(0, ui_buffer);
         display_message_lcd(0, ui_buffer, 1);
         Serial.println(ui_buffer);
-        snprintf(ui_buffer, 16, "M4:%u", meter.adc_rms_values[3]);
+        snprintf(ui_buffer, 16, "A4:%u M4:%.1f", meter.adc_rms_values[3], meter.meter_values[3]);
         // lcd.display_message(1, ui_buffer);
         display_message_lcd(1, ui_buffer);
         Serial.println(ui_buffer);
         ui_state = 5;
       } else if (ui_state == 5) {
-        snprintf(ui_buffer, 16, "M5:%u", meter.adc_rms_values[4]);
+        snprintf(ui_buffer, 16, "A5:%u M5:%.1f", meter.adc_rms_values[4], meter.meter_values[4]);
         // lcd.display_message(0, ui_buffer);
         display_message_lcd(0, ui_buffer, 1);
         Serial.println(ui_buffer);
-        snprintf(ui_buffer, 16, "M6:%u", meter.adc_rms_values[5]);
+        snprintf(ui_buffer, 16, "A6:%u M6:%.1f", meter.adc_rms_values[5], meter.meter_values[4]);
         // lcd.display_message(1, ui_buffer);
         display_message_lcd(1, ui_buffer);
         Serial.println(ui_buffer);
@@ -322,8 +322,7 @@ void update_meters(void *params)
 {
   while (1)
   {
-    meter.read_voltage();
-    meter.read_current();
+    meter.read();
     vTaskDelay(10);
   }
   /* delete a task when finish,

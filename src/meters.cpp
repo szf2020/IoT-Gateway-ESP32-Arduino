@@ -46,8 +46,8 @@ class Meter {
       }
     };
 
-    void read_voltage() {
-      for (uint8_t i = 0; i < 3; i++) {
+    void read() {
+      for (uint8_t i = 0; i < 6; i++) {
         uint16_t sensor_val = analogRead(ADC_PINS[i]);
         adc_sum_values[i] = adc_sum_values[i] +  sensor_val * sensor_val;
       }
@@ -55,7 +55,7 @@ class Meter {
 
       if (adc_avg_count_voltage > ADC_AVG_COUNT_MAX)
       {
-        for (uint8_t i = 0; i < 3; i++)
+        for (uint8_t i = 0; i < 6; i++)
         {
           adc_rms_values[i] = sqrt(adc_sum_values[i] / ADC_AVG_COUNT_MAX);
           meter_values[i] = config->data.cal_coefficients[i] * adc_rms_values[i] + config->data.cal_offsets[i];
@@ -64,31 +64,6 @@ class Meter {
         adc_avg_count_voltage = 0;
       }
     }
-
-     void read_current() {
-      for (uint8_t i = 3; i < 6; i++) {
-        uint16_t sample_val1 = analogRead(ADC_PINS[i]);
-        vTaskDelay(10);
-        uint16_t sample_val2 = analogRead(ADC_PINS[i]);
-        int16_t diff = (sample_val1 - sample_val2);
-        adc_sum_values[i] = adc_sum_values[i] + (diff * diff);
-      }
-      adc_avg_count_current += 1;
-
-      if (adc_avg_count_current > ADC_AVG_COUNT_MAX)
-      {
-        for (uint8_t i = 3; i < 6; i++)
-        {
-          // adc_rms_values[i] = adc_rms_values[i] + 0.1 * (sqrt(adc_sum_values[i] / ADC_AVG_COUNT_MAX) - adc_rms_values[i]);
-          adc_rms_values[i] = sqrt(adc_sum_values[i] / ADC_AVG_COUNT_MAX);
-          meter_values[i] = config->data.cal_coefficients[i] * adc_rms_values[i] + config->data.cal_offsets[i];
-          adc_sum_values[i] = 0;
-        }
-        adc_avg_count_current = 0;
-
-      }
-    }
-
 };
 
 #endif
