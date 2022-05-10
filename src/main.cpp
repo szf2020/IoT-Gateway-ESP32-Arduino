@@ -418,10 +418,11 @@ void onMessageCallback(WebsocketsMessage message)
     web_socket_client.send(buffer);
     #ifdef MODBUS_ENABLED
     buffer = modbus_handler.update();
+    buffer = prepare_modbus_data_buffer(buffer);
     Serial.print("Modbus: ");
     Serial.println(buffer);
-    #endif
     web_socket_client.send(buffer);
+    #endif
   } else if (cmd == 2 || cmd == 3 || cmd == 5) {
     char *buffer = prepare_config_data_buffer();
     web_socket_client.send(buffer);
@@ -484,8 +485,8 @@ void update_websocket(void *params)
         buffer = prepare_modbus_data_buffer(buffer);
         Serial.print("Modbus: ");
         Serial.println(buffer);
-        #endif
         web_socket_client.send(buffer);
+        #endif
       }
     }
     vTaskDelay(1000);
