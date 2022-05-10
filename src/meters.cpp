@@ -7,7 +7,14 @@
 // ADC
 #define ADC_AVG_COUNT_MAX 100
 
-const uint8_t ADC_PINS[6] = {33, 32, 35, 34, 36, 39};
+const uint8_t ADC_PINS[6] = {
+  METER_1_PIN,
+  METER_2_PIN,
+  METER_3_PIN,
+  METER_4_PIN,
+  METER_5_PIN,
+  METER_6_PIN
+};
 
 class Meter {
 

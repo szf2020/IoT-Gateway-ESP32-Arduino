@@ -9,11 +9,11 @@ enum DevWorkModes {
   LAZY_CLIENT,
 };
 
+#define ENABLE_SERIAL 1
 #define DEFAULT_HEARTBEAT_FREQ_SECONDS 60
 #define DEFAULT_SERVER_IP ""
 #define DEFAULT_SERVER_PORT 80
 #define DEFAULT_OTA_ADMIN_PASS "admin"
-
 
 // LED stuff
 #define LED_PIN 18
@@ -24,8 +24,17 @@ enum DevWorkModes {
 #define DHT_PIN 23
 #define DHT_TYPE DHT11
 
+// Meter pins
+#define METER_1_PIN 33
+#define METER_2_PIN 32
+#define METER_3_PIN 35
+#define METER_4_PIN 34
+#define METER_5_PIN 36
+#define METER_6_PIN 39
+
 // LCD
 #define LCD_ENABLED
+#define UI_UPDATE_SECONDS 0
 
 #define MODBUS_ENABLED
 #define MAX_MODBUS_SLAVES 3

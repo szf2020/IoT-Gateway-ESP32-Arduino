@@ -109,7 +109,7 @@ def serve(remoteAddr, localAddr, remotePort, localPort, password, filename, comm
     sock2.settimeout(TIMEOUT)
     try:
       data = sock2.recv(37).decode()
-      break;
+      break
     except:
       sys.stderr.write('.')
       sys.stderr.flush()
@@ -144,7 +144,7 @@ def serve(remoteAddr, localAddr, remotePort, localPort, password, filename, comm
         sys.stderr.write('FAIL\n')
         logging.error('%s', data)
         sock2.close()
-        sys.exit(1);
+        sys.exit(1)
         return 1
       sys.stderr.write('OK\n')
     else:
@@ -211,7 +211,7 @@ def serve(remoteAddr, localAddr, remotePort, localPort, password, filename, comm
           connection.close()
           f.close()
           sock.close()
-          return 0;
+          return 0
         if count == 5:
           logging.error('Error response from device')
           connection.close()

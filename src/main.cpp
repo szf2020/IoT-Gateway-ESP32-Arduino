@@ -25,7 +25,6 @@ uint8_t button_status = 0;
 
 // Serial
 uint8_t serial_state = 0;
-#define ENABLE_SERIAL 1
 
 Preferences preferences;
 DevConfig dev_config;
@@ -66,7 +65,6 @@ LiquidCrystal_I2C lcd(0x27, 16, 2);
 char ui_buffer[20];
 uint8_t ui_state = 0;
 uint8_t ui_update_counter = 0;
-#define UI_UPDATE_SECONDS 1
 
 char* prepare_data_buffer() {
 
@@ -185,6 +183,12 @@ void lcd_init(uint8_t display_message=0) {
     lcd.noBacklight();
     vTaskDelay(10);
     display_message_lcd(0, "IoT Gateway", 1);
+    snprintf(
+      ui_buffer, 16, "ID:%u V:%hu.%hu",
+      dev_config.data.dev_id, dev_config.data.hw_ver, dev_config.data.sw_ver
+    );
+    display_message_lcd(1, ui_buffer);
+    Serial.println(ui_buffer);
   }
   #endif
 }
@@ -252,16 +256,6 @@ void update_user_interface(void *params)
         lcd_init(1);
         ui_state = 1;
       } else if (ui_state == 1) {
-        snprintf(ui_buffer, 16, "ID:%u", dev_config.data.dev_id);
-        display_message_lcd(0, ui_buffer, 1);
-        Serial.println(ui_buffer);
-        // lcd.display_message(0, ui_buffer);
-        snprintf(ui_buffer, 16, "Ver:%hu.%hu", dev_config.data.hw_ver, dev_config.data.sw_ver);
-        // lcd.display_message(1, ui_buffer);
-        display_message_lcd(1, ui_buffer);
-        Serial.println(ui_buffer);
-        ui_state = 2;
-      } else if (ui_state == 2) {
         snprintf(ui_buffer, 16, "WiFi:%hu %u", wifi_state, server_sync.get_time_since_sync());
         // lcd.display_message(0, ui_buffer);
         display_message_lcd(0, ui_buffer, 1);
@@ -270,8 +264,8 @@ void update_user_interface(void *params)
         // lcd.display_message(1, ui_buffer);
         display_message_lcd(1, ui_buffer);
         Serial.println(ui_buffer);
-        ui_state = 3;
-      } else if (ui_state == 3) {
+        ui_state = 2;
+      } else if (ui_state == 2) {
         snprintf(ui_buffer, 16, "DHT:%hu",  dht_meter.dht_state);
         // lcd.display_message(0, ui_buffer);
         display_message_lcd(0, ui_buffer, 1);
@@ -280,8 +274,8 @@ void update_user_interface(void *params)
         // lcd.display_message(1, ui_buffer);
         display_message_lcd(1, ui_buffer);
         Serial.println(ui_buffer);
-        ui_state = 4;
-      } else if (ui_state == 4) {
+        ui_state = 3;
+      } else if (ui_state == 3) {
         snprintf(ui_buffer, 16, "M1:%u", meter.adc_rms_values[0]);
         // lcd.display_message(0, ui_buffer);
         display_message_lcd(0, ui_buffer, 1);
@@ -290,8 +284,8 @@ void update_user_interface(void *params)
         // lcd.display_message(1, ui_buffer);
         display_message_lcd(1, ui_buffer);
         Serial.println(ui_buffer);
-        ui_state = 5;
-      } else if (ui_state == 5) {
+        ui_state = 4;
+      } else if (ui_state == 4) {
         snprintf(ui_buffer, 16, "M3:%u", meter.adc_rms_values[2]);
         // lcd.display_message(0, ui_buffer);
         display_message_lcd(0, ui_buffer, 1);
@@ -300,8 +294,8 @@ void update_user_interface(void *params)
         // lcd.display_message(1, ui_buffer);
         display_message_lcd(1, ui_buffer);
         Serial.println(ui_buffer);
-        ui_state = 6;
-      } else if (ui_state == 6) {
+        ui_state = 5;
+      } else if (ui_state == 5) {
         snprintf(ui_buffer, 16, "M5:%u", meter.adc_rms_values[4]);
         // lcd.display_message(0, ui_buffer);
         display_message_lcd(0, ui_buffer, 1);
@@ -594,13 +588,12 @@ void setup()
                  else if (error == OTA_END_ERROR)
                    Serial.println("End Failed");
                });
-
-  ArduinoOTA.begin();
 }
 
 void loop()
 {
   if (wifi_state >= ConnectedAP) {
+    ArduinoOTA.begin();
     ArduinoOTA.handle();
   }
 }
