@@ -3,8 +3,6 @@
 #define _LCH_H_
 
 #include "config.cpp"
-
-#ifdef LCD_ENABLED
 #include <Wire.h>
 #include <LiquidCrystal_I2C.h>
 
@@ -19,47 +17,65 @@
 
 class LCD {
   private:
-    uint8_t init = 0;
+    char ui_buffer[20];
+    DevConfig *dev_config;
     LiquidCrystal_I2C *lcd;
   public:
     LCD() {}
-    LCD(LiquidCrystal_I2C *lcd) {
-      this->lcd = lcd;
-      this->lcd->init();
-      this->lcd->noBacklight();
-      this->lcd->clear();
-      this->init = 1;
-      this->lcd->setCursor(0, 0);
-      this->lcd->print("IoT Gateway");
+    LCD(DevConfig *dev_config) {
+      this->dev_config = dev_config;
+      this->lcd = new LiquidCrystal_I2C(LCD_I2C_ADDRESS, LCD_COLUMNS, LCD_ROWS);
+      this->lcd_init();
     };
 
-    void display_message(uint8_t lineno, char *message) {
-      uint8_t end_detected = 0;
-      if (this->init == 0) {
-        return;
+    void lcd_init(uint8_t display_message=0) {
+      vTaskDelay(10);
+      this->lcd->init();
+      vTaskDelay(10);
+      if (display_message == 1) {
+        this->lcd->noBacklight();
+        vTaskDelay(10);
+        this->display_message_lcd(0, "IoT Gateway", 1);
+        snprintf(
+          this->ui_buffer, 16, "ID:%u M:%hu V:%hu.%hu",
+          this->dev_config->data.dev_id, this->dev_config->data.work_mode, this->dev_config->data.hw_ver, this->dev_config->data.sw_ver
+        );
+        this->display_message_lcd(1, ui_buffer);
       }
+    }
+
+    void display_message_lcd(uint8_t lineno, char *message, uint8_t clear_lcd=0) {
+      uint8_t end_detected = 0;
       for (uint8_t i=0; i<16; i++) {
         if (message[i] == '\0') {
           end_detected = 1;
           break;
         }
       }
+      vTaskDelay(10);
+      if (clear_lcd == 1) {
+        this->lcd->clear();
+        vTaskDelay(10);
+        this->lcd->noBacklight();
+        vTaskDelay(10);
+      }
       if (end_detected == 0 || lineno > 1) {
         this->lcd->setCursor(0, 0);
+        vTaskDelay(10);
         this->lcd->printstr("msg invld");
       } else {
         this->lcd->setCursor(0, lineno);
+        vTaskDelay(10);
         this->lcd->printstr(message);
       }
     }
 
-    void clear() {
-      if (this->init == 0) {
-        return;
-      }
+    void clear_lcd() {
       this->lcd->clear();
+      vTaskDelay(10);
+      this->lcd->noBacklight();
+      vTaskDelay(10);
     }
 };
 
-#endif
 #endif

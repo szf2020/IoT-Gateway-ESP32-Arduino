@@ -4,6 +4,15 @@
 
 #include <Preferences.h>
 
+// LCD
+#define LCD_ENABLED
+#define UI_UPDATE_SECONDS 0
+
+// Digital pin connected to the DHT sensor
+#define DHT_ENABLED
+#define DHT_PIN 23
+#define DHT_TYPE DHT11
+
 enum DevWorkModes {
   SIMPLE_CLIENT = 0,
   LAZY_CLIENT,
@@ -19,11 +28,6 @@ enum DevWorkModes {
 #define LED_PIN 18
 #define BUTTON_PIN 19
 
-// DHT
-// Digital pin connected to the DHT sensor
-#define DHT_PIN 23
-#define DHT_TYPE DHT11
-
 // Meter pins
 #define METER_1_PIN 33
 #define METER_2_PIN 32
@@ -32,10 +36,7 @@ enum DevWorkModes {
 #define METER_5_PIN 36
 #define METER_6_PIN 39
 
-// LCD
-#define LCD_ENABLED
-#define UI_UPDATE_SECONDS 0
-
+// Modbus
 #define MODBUS_ENABLED
 #define MAX_MODBUS_SLAVES 3
 #define MAX_ADDRESSES_PER_MODBUS_SLAVE 5

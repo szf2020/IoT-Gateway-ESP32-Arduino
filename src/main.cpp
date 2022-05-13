@@ -14,7 +14,10 @@
 #include "meters.cpp"
 #include "dht.cpp"
 #include "server_sync.cpp"
-// #include "lcd.cpp"
+
+#ifdef LCD_ENABLED
+#include "lcd.cpp"
+#endif
 
 #ifdef MODBUS_ENABLED
 #include "modbushandler.cpp"
@@ -30,11 +33,14 @@ Preferences preferences;
 DevConfig dev_config;
 ServerSync server_sync;
 Meter meter;
+
+#ifdef DHT_ENABLED
 DHT dht(DHT_PIN, DHT_TYPE);
 DHTMeter dht_meter;
+#endif
 
 #ifdef MODBUS_ENABLED
-  ModbusHandler modbus_handler;
+ModbusHandler modbus_handler;
 #endif
 
 enum WiFiState
@@ -56,10 +62,7 @@ WebsocketsClient web_socket_client;
 // WiFiUDP udp_client;
 
 #ifdef LCD_ENABLED
-// LCD lcd;
-#include <Wire.h>
-#include <LiquidCrystal_I2C.h>
-LiquidCrystal_I2C lcd(0x27, 16, 2);
+LCD lcd;
 #endif
 
 char ui_buffer[20];
@@ -69,6 +72,7 @@ uint8_t ui_update_counter = 0;
 char* prepare_data_buffer() {
 
   ip = WiFi.localIP();
+#ifdef DHT_ENABLED
   sprintf(
     server_sync.shared_buffer,
     "{"
@@ -86,7 +90,23 @@ char* prepare_data_buffer() {
     meter.meter_values[3], meter.meter_values[4], meter.meter_values[5],
     wifi_state, ip[0], ip[1], ip[2], ip[3], server_sync.get_time_since_sync()
   );
-
+#else
+  sprintf(
+    server_sync.shared_buffer,
+    "{"
+    "\"config\": { \"hwVer\": %hu, \"swVer\": %hu, \"devId\": %u, \"workmode\": %hu, \"mac\": \"%s\" },"
+    "\"adc\": { \"1\": %u, \"2\": %u, \"3\": %u, \"4\": %u, \"5\": %u, \"6\": %u },"
+    "\"meters\": { \"1\": %.2f, \"2\": %.2f, \"3\": %.2f, \"4\": %.2f, \"5\": %.2f, \"6\": %.2f },"
+    "\"network\": { \"state\": %hu, \"ip\": \"%hu.%hu.%hu.%hu\", \"tts\": %u }"
+    "}",
+    dev_config.data.hw_ver, dev_config.data.sw_ver, dev_config.data.dev_id, dev_config.data.work_mode, mac_address,
+    meter.adc_rms_values[0], meter.adc_rms_values[1], meter.adc_rms_values[2],
+    meter.adc_rms_values[3], meter.adc_rms_values[4], meter.adc_rms_values[5],
+    meter.meter_values[0], meter.meter_values[1], meter.meter_values[2],
+    meter.meter_values[3], meter.meter_values[4], meter.meter_values[5],
+    wifi_state, ip[0], ip[1], ip[2], ip[3], server_sync.get_time_since_sync()
+  );
+#endif
   return server_sync.shared_buffer;
 
 }
@@ -146,63 +166,6 @@ char* prepare_config_data_buffer() {
 
 }
 
-void display_message_lcd(uint8_t lineno, char *message, uint8_t clear_lcd=0) {
-  #ifdef LCD_ENABLED
-  uint8_t end_detected = 0;
-  for (uint8_t i=0; i<16; i++) {
-    if (message[i] == '\0') {
-      end_detected = 1;
-      break;
-    }
-  }
-  vTaskDelay(10);
-  if (clear_lcd == 1) {
-    lcd.clear();
-    vTaskDelay(10);
-    lcd.noBacklight();
-    vTaskDelay(10);
-  }
-  if (end_detected == 0 || lineno > 1) {
-    lcd.setCursor(0, 0);
-    vTaskDelay(10);
-    lcd.printstr("msg invld");
-  } else {
-    lcd.setCursor(0, lineno);
-    vTaskDelay(10);
-    lcd.printstr(message);
-  }
-  #endif
-}
-
-void lcd_init(uint8_t display_message=0) {
-  #ifdef LCD_ENABLED
-  vTaskDelay(10);
-  lcd.init();
-  vTaskDelay(10);
-  if (display_message == 1) {
-    lcd.noBacklight();
-    vTaskDelay(10);
-    display_message_lcd(0, "IoT Gateway", 1);
-    snprintf(
-      ui_buffer, 16, "ID:%u M:%hu V:%hu.%hu",
-      dev_config.data.dev_id, dev_config.data.work_mode, dev_config.data.hw_ver, dev_config.data.sw_ver
-    );
-    display_message_lcd(1, ui_buffer);
-    Serial.println(ui_buffer);
-  }
-  #endif
-}
-
-void clear_lcd() {
-  #ifdef LCD_ENABLED
-  lcd.clear();
-  vTaskDelay(10);
-  lcd.noBacklight();
-  vTaskDelay(10);
-  Serial.println("LCD clear");
-  #endif
-}
-
 void update_user_interface(void *params)
 {
   char *buffer;
@@ -249,60 +212,54 @@ void update_user_interface(void *params)
       }
     }
 
-    #ifdef LCD_ENABLED
+#ifdef LCD_ENABLED
     if (ui_update_counter <= 0) {
       ui_update_counter = UI_UPDATE_SECONDS;
       if (ui_state == 0) {
-        lcd_init(1);
+        lcd.lcd_init(1);
         ui_state = 1;
       } else if (ui_state == 1) {
         snprintf(ui_buffer, 16, "WiFi:%hu %u", wifi_state, server_sync.get_time_since_sync());
         // lcd.display_message(0, ui_buffer);
-        display_message_lcd(0, ui_buffer, 1);
+        lcd.display_message_lcd(0, ui_buffer, 1);
         Serial.println(ui_buffer);
         snprintf(ui_buffer, 16, "%hu.%hu.%hu.%hu", ip[0], ip[1], ip[2], ip[3]);
         // lcd.display_message(1, ui_buffer);
-        display_message_lcd(1, ui_buffer);
+        lcd.display_message_lcd(1, ui_buffer);
         Serial.println(ui_buffer);
         ui_state = 2;
       } else if (ui_state == 2) {
+#ifdef DHT_ENABLED
         snprintf(ui_buffer, 16, "DHT:%hu",  dht_meter.dht_state);
-        // lcd.display_message(0, ui_buffer);
-        display_message_lcd(0, ui_buffer, 1);
+        lcd.display_message_lcd(0, ui_buffer, 1);
         Serial.println(ui_buffer);
         snprintf(ui_buffer, 16, "T:%.1f H:%.1f", dht_meter.temperature, dht_meter.humidity);
-        // lcd.display_message(1, ui_buffer);
-        display_message_lcd(1, ui_buffer);
+        lcd.display_message_lcd(1, ui_buffer);
         Serial.println(ui_buffer);
+#endif
         ui_state = 3;
       } else if (ui_state == 3) {
         snprintf(ui_buffer, 16, "A1:%u M1:%.1f", meter.adc_rms_values[0], meter.meter_values[0]);
-        // lcd.display_message(0, ui_buffer);
-        display_message_lcd(0, ui_buffer, 1);
+        lcd.display_message_lcd(0, ui_buffer, 1);
         Serial.println(ui_buffer);
         snprintf(ui_buffer, 16, "A2:%u M2:%.1f", meter.adc_rms_values[1], meter.meter_values[1]);
-        // lcd.display_message(1, ui_buffer);
-        display_message_lcd(1, ui_buffer);
+        lcd.display_message_lcd(1, ui_buffer);
         Serial.println(ui_buffer);
         ui_state = 4;
       } else if (ui_state == 4) {
         snprintf(ui_buffer, 16, "A3:%u M3:%.1f", meter.adc_rms_values[2], meter.meter_values[2]);
-        // lcd.display_message(0, ui_buffer);
-        display_message_lcd(0, ui_buffer, 1);
+        lcd.display_message_lcd(0, ui_buffer, 1);
         Serial.println(ui_buffer);
         snprintf(ui_buffer, 16, "A4:%u M4:%.1f", meter.adc_rms_values[3], meter.meter_values[3]);
-        // lcd.display_message(1, ui_buffer);
-        display_message_lcd(1, ui_buffer);
+        lcd.display_message_lcd(1, ui_buffer);
         Serial.println(ui_buffer);
         ui_state = 5;
       } else if (ui_state == 5) {
         snprintf(ui_buffer, 16, "A5:%u M5:%.1f", meter.adc_rms_values[4], meter.meter_values[4]);
-        // lcd.display_message(0, ui_buffer);
-        display_message_lcd(0, ui_buffer, 1);
+        lcd.display_message_lcd(0, ui_buffer, 1);
         Serial.println(ui_buffer);
         snprintf(ui_buffer, 16, "A6:%u M6:%.1f", meter.adc_rms_values[5], meter.meter_values[4]);
-        // lcd.display_message(1, ui_buffer);
-        display_message_lcd(1, ui_buffer);
+        lcd.display_message_lcd(1, ui_buffer);
         Serial.println(ui_buffer);
         ui_state = 0;
       }
@@ -330,6 +287,7 @@ void update_meters(void *params)
   vTaskDelete(NULL);
 }
 
+#ifdef DHT_ENABLED
 void update_dht(void *params)
 {
 
@@ -342,6 +300,7 @@ void update_dht(void *params)
   this will never happen because this is infinity loop */
   vTaskDelete(NULL);
 }
+#endif
 
 // wifi event handler
 void WiFiEvent(WiFiEvent_t event)
@@ -502,14 +461,19 @@ void setup()
   server_sync = ServerSync(&dev_config);
   meter = Meter(&dev_config);
 
+#ifdef DHT_ENABLED
   dht.begin();
   dht_meter = DHTMeter(&dht);
+#endif
 
-  lcd_init(1);
-
-  #ifdef MODBUS_ENABLED
+#ifdef MODBUS_ENABLED
   modbus_handler.init(&dev_config);
-  #endif
+#endif
+
+#ifdef LCD_ENABLED
+  lcd = LCD(&dev_config);
+  lcd.lcd_init(1);
+#endif
 
   xTaskCreate(
       initialise_wifi,   /* Task function. */
@@ -527,6 +491,7 @@ void setup()
       9,                 /* priority of the task */
       NULL);             /* Task handle to keep track of created task */
 
+#ifdef DHT_ENABLED
   xTaskCreate(
       update_dht,        /* Task function. */
       "update_dht",      /* name of task. */
@@ -534,6 +499,7 @@ void setup()
       NULL,              /* parameter of the task */
       7,                 /* priority of the task */
       NULL);             /* Task handle to keep track of created task */
+#endif
 
   xTaskCreate(
       update_user_interface,     /* Task function. */
