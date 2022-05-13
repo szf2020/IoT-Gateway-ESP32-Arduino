@@ -23,6 +23,7 @@
 #include "modbushandler.cpp"
 #endif
 
+uint8_t ota_in_progress = 0;
 uint8_t led_status = 0;
 uint8_t button_status = 0;
 
@@ -184,6 +185,7 @@ void update_user_interface(void *params)
 
   while (1)
   {
+    if (ota_in_progress > 0) break;
     if (serial_state == 1)
     {
       buffer = prepare_config_data_buffer();
@@ -279,6 +281,7 @@ void update_meters(void *params)
 {
   while (1)
   {
+    if (ota_in_progress > 0) break;
     meter.read();
     vTaskDelay(10);
   }
@@ -293,6 +296,7 @@ void update_dht(void *params)
 
   while (1)
   {
+    if (ota_in_progress > 0) break;
     dht_meter.read();
     vTaskDelay(10000);
   }
@@ -422,6 +426,9 @@ void update_websocket(void *params)
   char *buffer;
   while (1)
   {
+
+    if (ota_in_progress > 0) break;
+
     web_socket_client.poll();
     if (wifi_state == ConnectedAP) {
       web_socket_client.connect(
@@ -527,21 +534,25 @@ void setup()
   ArduinoOTA
       .onStart([]()
                {
+                 ota_in_progress = 1;
                  String type;
                  if (ArduinoOTA.getCommand() == U_FLASH)
                    type = "sketch";
                  else // U_SPIFFS
                    type = "filesystem";
-
                  // NOTE: if updating SPIFFS this would be the place to unmount SPIFFS using SPIFFS.end()
                  Serial.println("Start updating " + type);
                })
       .onEnd([]()
-             { Serial.println("\nEnd"); })
+            { 
+              ota_in_progress = 0;
+              Serial.println("\nEnd");
+            })
       .onProgress([](unsigned int progress, unsigned int total)
                   { Serial.printf("Progress: %u%%\r", (progress / (total / 100))); })
       .onError([](ota_error_t error)
                {
+                 ota_in_progress = 0;
                  Serial.printf("Error[%u]: ", error);
                  if (error == OTA_AUTH_ERROR)
                    Serial.println("Auth Failed");
@@ -554,12 +565,13 @@ void setup()
                  else if (error == OTA_END_ERROR)
                    Serial.println("End Failed");
                });
+
+      ArduinoOTA.begin();
 }
 
 void loop()
 {
   if (wifi_state >= ConnectedAP) {
-    ArduinoOTA.begin();
     ArduinoOTA.handle();
   }
 }
