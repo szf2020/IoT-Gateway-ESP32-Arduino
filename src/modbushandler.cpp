@@ -32,10 +32,10 @@ class ModbusHandler {
       pinMode(MODBUS_RTS_PIN, OUTPUT);
       digitalWrite(MODBUS_RTS_PIN, 0);
       this->config = cfg;
-      Serial2.begin(MODBUS_BAUDRATE, SERIAL_8N2, MODBUS_RX_PIN, MODBUS_TX_PIN, false, 2000);
+      Serial1.begin(MODBUS_BAUDRATE, SERIAL_8N2, MODBUS_RX_PIN, MODBUS_TX_PIN, false, 2000);
 
       // Modbus slave ID 1
-      this->node->begin(1, Serial2);
+      this->node->begin(1, Serial1);
       // Callbacks allow us to configure the RS485 transceiver correctly
       this->node->preTransmission(preTransmission);
       this->node->postTransmission(postTransmission);
@@ -50,7 +50,7 @@ class ModbusHandler {
       if (this->config->data.modbus_enabled == 1) {
         for (uint8_t i=0; i < MAX_MODBUS_SLAVES; i++) {
           if (this->config->data.modbus_slave_ids[i] != 0) {
-            this->node->begin(this->config->data.modbus_slave_ids[i], Serial2);
+            this->node->begin(this->config->data.modbus_slave_ids[i], Serial1);
             for (uint8_t k = 0; k < MAX_ADDRESSES_PER_MODBUS_SLAVE; k++) {
               result = this->node->ku8MBResponseTimedOut;
               valid_func = 0;
