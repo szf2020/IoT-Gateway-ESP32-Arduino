@@ -11,6 +11,12 @@
 
 using namespace websockets;
 
+enum ServerConnectionState
+{
+  Disconnected = 1,
+  Connected = 2
+};
+
 class ServerSync
 {
 
@@ -19,6 +25,7 @@ private:
   uint16_t seconds_since_last_sent;
 
 public:
+  uint8_t state;
   char shared_buffer[1000];
 
   ServerSync() {
@@ -27,6 +34,7 @@ public:
 
   ServerSync(DevConfig *cfg)
   {
+    state = ServerConnectionState::Disconnected;
     config = cfg;
     seconds_since_last_sent = 9999;
   };

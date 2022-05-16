@@ -2,18 +2,20 @@
 #include "freertos/task.h"
 #include <WiFi.h>
 #include <Adafruit_Sensor.h>
-#include <DHT.h>
 // #include <WiFiUdp.h>
 // #include "wifi_events.h"
-#include <ArduinoWebsockets.h>
 
 #include <Preferences.h>
 #include <ArduinoOTA.h>
 
 #include "config.cpp"
 #include "meters.cpp"
-#include "dht.cpp"
 #include "server_sync.cpp"
+
+#ifdef DHT_ENABLED
+#include <DHT.h>
+#include "dht.cpp"
+#endif
 
 #ifdef LCD_ENABLED
 #include "lcd.cpp"
@@ -21,6 +23,11 @@
 
 #ifdef MODBUS_ENABLED
 #include "modbushandler.cpp"
+#endif
+
+#ifdef GSM_ENABLED
+#include <TinyGsmClient.h>
+#include "gsm.cpp"
 #endif
 
 uint8_t ota_in_progress = 0;
@@ -44,13 +51,19 @@ DHTMeter dht_meter;
 ModbusHandler modbus_handler;
 #endif
 
+#ifdef GSM_ENABLED
+GSM gsm;
+TinyGsm gsm_modem(Serial2);
+TinyGsmClient gsm_client(gsm_modem);
+uint16_t gsm_update_counter = 0;
+#endif
+
 enum WiFiState
 {
   InIt = 1,
   ConnectingAp,
   SmartConfigSetup,
-  ConnectedAP,
-  ConnectedToServer
+  ConnectedAP
 };
 
 uint8_t wifi_state = InIt;
@@ -70,9 +83,22 @@ char ui_buffer[20];
 uint8_t ui_state = 0;
 uint8_t ui_update_counter = 0;
 
+void update_ip_address() {
+#ifdef GSM_ENABLED
+  if (gsm.state == GSMState::GPRSConnected) {
+    ip = gsm_modem.localIP();
+  } else {
+    ip = WiFi.localIP();
+  }
+#else
+  ip = WiFi.localIP();
+#endif
+}
+
 char* prepare_data_buffer() {
 
-  ip = WiFi.localIP();
+  update_ip_address();
+
 #ifdef DHT_ENABLED
   sprintf(
     server_sync.shared_buffer,
@@ -98,18 +124,17 @@ char* prepare_data_buffer() {
     "\"config\": { \"hwVer\": %hu, \"swVer\": %hu, \"devId\": %u, \"workmode\": %hu, \"mac\": \"%s\" },"
     "\"adc\": { \"1\": %u, \"2\": %u, \"3\": %u, \"4\": %u, \"5\": %u, \"6\": %u },"
     "\"meters\": { \"1\": %.2f, \"2\": %.2f, \"3\": %.2f, \"4\": %.2f, \"5\": %.2f, \"6\": %.2f },"
-    "\"network\": { \"state\": %hu, \"ip\": \"%hu.%hu.%hu.%hu\", \"tts\": %u }"
+    "\"network\": { \"state\": %hu, %hu, %hu, \"ip\": \"%hu.%hu.%hu.%hu\", \"tts\": %u }"
     "}",
     dev_config.data.hw_ver, dev_config.data.sw_ver, dev_config.data.dev_id, dev_config.data.work_mode, mac_address,
     meter.adc_rms_values[0], meter.adc_rms_values[1], meter.adc_rms_values[2],
     meter.adc_rms_values[3], meter.adc_rms_values[4], meter.adc_rms_values[5],
     meter.meter_values[0], meter.meter_values[1], meter.meter_values[2],
     meter.meter_values[3], meter.meter_values[4], meter.meter_values[5],
-    wifi_state, ip[0], ip[1], ip[2], ip[3], server_sync.get_time_since_sync()
+    wifi_state, gsm.state, server_sync.state, ip[0], ip[1], ip[2], ip[3], server_sync.get_time_since_sync()
   );
 #endif
   return server_sync.shared_buffer;
-
 }
 
 char* prepare_modbus_data_buffer(char *modbus_data) {
@@ -123,8 +148,7 @@ char* prepare_modbus_data_buffer(char *modbus_data) {
 }
 
 char* prepare_config_data_buffer() {
-
-  ip = WiFi.localIP();
+  update_ip_address();
   sprintf(
       server_sync.shared_buffer,
       "{\"config\": {"
@@ -391,7 +415,7 @@ void onMessageCallback(WebsocketsMessage message)
     web_socket_client.send(buffer);
     // Config is updated. Reinitialize the web socket.
     web_socket_client.close();
-    wifi_state = ConnectedAP;
+    server_sync.state = ServerConnectionState::Disconnected;
   }
 }
 
@@ -400,24 +424,24 @@ void onEventsCallback(WebsocketsEvent event, String data)
   if (event == WebsocketsEvent::ConnectionOpened)
   {
     Serial.println("Connection Opened");
-    wifi_state = ConnectedToServer;
+    server_sync.state = ServerConnectionState::Connected;
   }
   else if (event == WebsocketsEvent::ConnectionClosed)
   {
     Serial.println("Connection Closed");
-    wifi_state = ConnectedAP;
+    server_sync.state = ServerConnectionState::Disconnected;
   }
   else if (event == WebsocketsEvent::GotPing)
   {
     Serial.println("Got a Ping!");
     web_socket_client.pong();
-    wifi_state = ConnectedToServer;
+    server_sync.state = ServerConnectionState::Connected;
   }
   else if (event == WebsocketsEvent::GotPong)
   {
     Serial.println("Got a Pong!");
     web_socket_client.ping();
-    wifi_state = ConnectedToServer;
+    server_sync.state = ServerConnectionState::Connected;
   }
 }
 
@@ -430,7 +454,14 @@ void update_websocket(void *params)
     if (ota_in_progress > 0) break;
 
     web_socket_client.poll();
-    if (wifi_state == ConnectedAP) {
+
+#ifdef GSM_ENABLED
+    if (server_sync.state == ServerConnectionState::Disconnected && (wifi_state == ConnectedAP || gsm.state == GSMState::GPRSConnected))
+#else
+    if (server_sync.state == ServerConnectionState::Disconnected && wifi_state == ConnectedAP )
+#endif
+    {
+      Serial.println("Connecting to server...");
       web_socket_client.connect(
         dev_config.get_server_ip(),
         dev_config.get_server_port(),
@@ -438,7 +469,7 @@ void update_websocket(void *params)
       );
     }
 
-    if (server_sync.time_to_send() && wifi_state == ConnectedToServer)
+    if (server_sync.time_to_send() && server_sync.state == ServerConnectionState::Connected)
     {
       buffer = server_sync.get_heartbeat();
       web_socket_client.send(buffer);
@@ -483,6 +514,10 @@ void setup()
 #ifdef LCD_ENABLED
   lcd = LCD(&dev_config);
   lcd.lcd_init(1);
+#endif
+
+#ifdef GSM_ENABLED
+  gsm.init(&dev_config, &gsm_modem, &gsm_client);
 #endif
 
   xTaskCreate(
@@ -592,4 +627,13 @@ void setup()
 void loop()
 {
   ArduinoOTA.handle();
+
+  #ifdef GSM_ENABLED
+    if (ota_in_progress == 0 && gsm_update_counter > 65000) {
+      gsm_update_counter = 0;
+      gsm.check_gprs();
+    }
+    gsm_update_counter += 1;
+    delay(1);
+  #endif
 }

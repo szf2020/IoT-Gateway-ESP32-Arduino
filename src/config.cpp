@@ -4,12 +4,26 @@
 
 #include <Preferences.h>
 
+// GSM
+#define GSM_ENABLED
+#define TINY_GSM_MODEM_SIM800
+#define GSM_BAUDRATE 115200
+#define GSM_RX_PIN 26
+#define GSM_TX_PIN 27
+#define GSM_RST_PIN 5
+#define GSM_POWERKEY_PIN 4 
+#define GSM_POWER_PIN 23
+// Leave empty, if missing user or pass
+#define GSM_APN  ""
+#define GSM_USER ""
+#define GSM_PASS ""
+
 // LCD
-#define LCD_ENABLED
+// #define LCD_ENABLED
 #define UI_UPDATE_SECONDS 0
 
 // Digital pin connected to the DHT sensor
-#define DHT_ENABLED
+// #define DHT_ENABLED
 #define DHT_PIN 23
 #define DHT_TYPE DHT11
 
@@ -20,7 +34,7 @@ enum DevWorkModes {
 
 #define ENABLE_SERIAL 1
 #define DEFAULT_HEARTBEAT_FREQ_SECONDS 60
-#define DEFAULT_SERVER_IP ""
+#define DEFAULT_SERVER_IP "data.okosengineering.com"
 #define DEFAULT_SERVER_PORT 80
 #define DEFAULT_OTA_ADMIN_PASS "admin"
 
