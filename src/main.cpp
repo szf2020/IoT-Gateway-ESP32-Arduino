@@ -99,6 +99,14 @@ char* prepare_data_buffer() {
 
   update_ip_address();
 
+  char network_state[10];
+
+#ifdef GSM_ENABLED
+  sprintf(network_state, "%hu, %hu, %hu", wifi_state, gsm.state, server_sync.state);
+#else
+  sprintf(network_state, "%hu, %hu", wifi_state, server_sync.state);
+#endif
+
 #ifdef DHT_ENABLED
   sprintf(
     server_sync.shared_buffer,
@@ -107,7 +115,7 @@ char* prepare_data_buffer() {
     "\"adc\": { \"1\": %u, \"2\": %u, \"3\": %u, \"4\": %u, \"5\": %u, \"6\": %u },"
     "\"dht\": { \"state\": %hu, \"temperature\": %.2f, \"humidity\": %.2f, \"hic\": %.2f },"
     "\"meters\": { \"1\": %.2f, \"2\": %.2f, \"3\": %.2f, \"4\": %.2f, \"5\": %.2f, \"6\": %.2f },"
-    "\"network\": { \"state\": %hu, \"ip\": \"%hu.%hu.%hu.%hu\", \"tts\": %u }"
+    "\"network\": { \"state\": %s, \"ip\": \"%hu.%hu.%hu.%hu\", \"tts\": %u }"
     "}",
     dev_config.data.hw_ver, dev_config.data.sw_ver, dev_config.data.dev_id, dev_config.data.work_mode, mac_address,
     meter.adc_rms_values[0], meter.adc_rms_values[1], meter.adc_rms_values[2],
@@ -115,7 +123,7 @@ char* prepare_data_buffer() {
     dht_meter.dht_state, dht_meter.temperature, dht_meter.humidity, dht_meter.hic,
     meter.meter_values[0], meter.meter_values[1], meter.meter_values[2],
     meter.meter_values[3], meter.meter_values[4], meter.meter_values[5],
-    wifi_state, ip[0], ip[1], ip[2], ip[3], server_sync.get_time_since_sync()
+    network_state, ip[0], ip[1], ip[2], ip[3], server_sync.get_time_since_sync()
   );
 #else
   sprintf(
@@ -124,14 +132,14 @@ char* prepare_data_buffer() {
     "\"config\": { \"hwVer\": %hu, \"swVer\": %hu, \"devId\": %u, \"workmode\": %hu, \"mac\": \"%s\" },"
     "\"adc\": { \"1\": %u, \"2\": %u, \"3\": %u, \"4\": %u, \"5\": %u, \"6\": %u },"
     "\"meters\": { \"1\": %.2f, \"2\": %.2f, \"3\": %.2f, \"4\": %.2f, \"5\": %.2f, \"6\": %.2f },"
-    "\"network\": { \"state\": %hu, %hu, %hu, \"ip\": \"%hu.%hu.%hu.%hu\", \"tts\": %u }"
+    "\"network\": { \"state\": %s, \"ip\": \"%hu.%hu.%hu.%hu\", \"tts\": %u }"
     "}",
     dev_config.data.hw_ver, dev_config.data.sw_ver, dev_config.data.dev_id, dev_config.data.work_mode, mac_address,
     meter.adc_rms_values[0], meter.adc_rms_values[1], meter.adc_rms_values[2],
     meter.adc_rms_values[3], meter.adc_rms_values[4], meter.adc_rms_values[5],
     meter.meter_values[0], meter.meter_values[1], meter.meter_values[2],
     meter.meter_values[3], meter.meter_values[4], meter.meter_values[5],
-    wifi_state, gsm.state, server_sync.state, ip[0], ip[1], ip[2], ip[3], server_sync.get_time_since_sync()
+    network_state, ip[0], ip[1], ip[2], ip[3], server_sync.get_time_since_sync()
   );
 #endif
   return server_sync.shared_buffer;
