@@ -37,13 +37,15 @@ class HTTPHandler {
     }
 
     err = this->http_client->responseStatusCode();
-
-    this->resp_string = this->http_client->responseBody();
-
     Serial.print("resp: ");
     Serial.print(err);
-    Serial.print(" ");
-    Serial.println(this->resp_string);
+    if (err == 200 || err == 201) {
+      this->resp_string = this->http_client->responseBody();
+      Serial.print(" ");
+      Serial.println(this->resp_string);
+    }
+
+    this->http_client->stop();
     return err;
   }
 
@@ -59,13 +61,15 @@ class HTTPHandler {
     }
 
     err = this->http_client->responseStatusCode();
-
-    this->resp_string = this->http_client->responseBody();
-
     Serial.print("resp: ");
     Serial.print(err);
-    Serial.print(" ");
-    Serial.println(this->resp_string);
+    if (err == 200 || err == 201) {
+      this->resp_string = this->http_client->responseBody();
+      Serial.print(" ");
+      Serial.println(this->resp_string);
+    }
+
+    this->http_client->stop();
     return err;
   }
 
