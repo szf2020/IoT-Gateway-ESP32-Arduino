@@ -37,13 +37,14 @@ public:
     seconds_since_last_sent = 9999;
   };
 
-  char* get_heartbeat()
+  char* get_heartbeat(char *device_mac)
   {
     sprintf(
       shared_buffer,
       HEARTBEAT_CONTENT
-      " [%u]",
-      config->data.dev_id
+      " [%u] [%s]",
+      config->data.dev_id,
+      device_mac
     );
     return shared_buffer;
   }

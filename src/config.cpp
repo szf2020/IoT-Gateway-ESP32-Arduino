@@ -4,8 +4,13 @@
 
 #include <Preferences.h>
 
+#define HEARTBEAT_DATA_PATH "/api/heartbeat/"
+#define DATA_PATH "/api/data/"
+#define WEBSOCKET_PATH "/iotgw1/"
+
 // GSM
-// #define GSM_ENABLED
+#define GSM_ENABLED
+#define GSM_POLL_TIME 40000
 #define TINY_GSM_MODEM_SIM800
 #define GSM_BAUDRATE 115200
 #define GSM_RX_PIN 26
@@ -19,11 +24,11 @@
 #define GSM_PASS ""
 
 // LCD
-#define LCD_ENABLED
+// #define LCD_ENABLED
 #define UI_UPDATE_SECONDS 0
 
 // Digital pin connected to the DHT sensor
-#define DHT_ENABLED
+// #define DHT_ENABLED
 #define DHT_PIN 23
 #define DHT_TYPE DHT11
 
@@ -33,7 +38,7 @@ enum DevWorkModes {
 };
 
 #define ENABLE_SERIAL 1
-#define DEFAULT_HEARTBEAT_FREQ_SECONDS 60
+#define DEFAULT_HEARTBEAT_FREQ_SECONDS 30
 #define DEFAULT_SERVER_IP "data.okosengineering.com"
 #define DEFAULT_SERVER_PORT 80
 #define DEFAULT_OTA_ADMIN_PASS "admin"

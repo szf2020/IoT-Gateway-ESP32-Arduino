@@ -77,7 +77,7 @@ LCD lcd;
 #ifdef GSM_ENABLED
 #include <ArduinoHttpClient.h>
 #include "http_handler.cpp"
-HttpClient http_client(gsm_client, dev_config.get_server_ip(), dev_config.get_server_port());
+HttpClient *http_client;
 HTTPHandler http_handler;
 #else
 #include <ArduinoWebsockets.h>
@@ -103,6 +103,9 @@ void update_ip_address() {
 #endif
 }
 
+// declare reset function at address 0
+void(* reset_device) (void) = 0;
+
 char* prepare_data_buffer() {
 
   update_ip_address();
@@ -110,9 +113,9 @@ char* prepare_data_buffer() {
   char network_state[10];
 
 #ifdef GSM_ENABLED
-  sprintf(network_state, "%hu, %hu, %hu", wifi_state, gsm.state, server_sync.state);
+  sprintf(network_state, "\"%hu, %hu, %hu\"", wifi_state, gsm.state, server_sync.state);
 #else
-  sprintf(network_state, "%hu, %hu", wifi_state, server_sync.state);
+  sprintf(network_state, "\"%hu, %hu\"", wifi_state, server_sync.state);
 #endif
 
 #ifdef DHT_ENABLED
@@ -326,7 +329,7 @@ void update_meters(void *params)
   {
     if (ota_in_progress > 0) break;
     meter.read();
-    vTaskDelay(10);
+    vTaskDelay(3);
   }
   /* delete a task when finish,
   this will never happen because this is infinity loop */
@@ -415,39 +418,58 @@ void initialise_wifi(void *params)
 #ifdef GSM_ENABLED
 void update_http(void *params)
 {
+  uint8_t cmd = 0;
   char *buffer;
   while (1)
   {
 
     if (ota_in_progress > 0) break;
 
-#ifdef GSM_ENABLED
-    if (wifi_state == ConnectedAP || gsm.state == GSMState::GPRSConnected) {
+    if (gsm.state == GSMState::GPRSConnected) {
       http_handler.poll();
       server_sync.state = ServerConnectionState::Connected;
     }
-#else
-    if (wifi_state == ConnectedAP ) {
-      http_handler.poll();
-    }
-#endif
 
-    if (server_sync.time_to_send() && server_sync.state == ServerConnectionState::Connected)
+    if (server_sync.time_to_send() && gsm.state == GSMState::GPRSConnected && server_sync.state == ServerConnectionState::Connected)
     {
-      buffer = server_sync.get_heartbeat();
-      http_handler.send_heartbeat("/api/data/", buffer);
+      int resp;
+      resp = http_handler.send_heartbeat(HEARTBEAT_DATA_PATH, dev_config.data.dev_id, mac_address);
       server_sync.send_success();
-      // if (dev_config.data.work_mode == SIMPLE_CLIENT) {
-      //   char *buffer = prepare_data_buffer();
-      //   web_socket_client.send(buffer);
-      //   #ifdef MODBUS_ENABLED
-      //   buffer = modbus_handler.update();
-      //   buffer = prepare_modbus_data_buffer(buffer);
-      //   Serial.print("Modbus: ");
-      //   Serial.println(buffer);
-      //   web_socket_client.send(buffer);
-      //   #endif
-      // }
+      if (resp == 200 || resp == 201) {
+        server_sync.process_response(
+          http_handler.get_response()
+        );
+      }
+      if (dev_config.data.work_mode == SIMPLE_CLIENT) {
+        buffer = prepare_data_buffer();
+        resp = http_handler.send_data(DATA_PATH, buffer);
+        if (resp == 200 || resp == 201) {
+          server_sync.process_response(
+            http_handler.get_response()
+          );
+        }
+#ifdef MODBUS_ENABLED
+        buffer = modbus_handler.update();
+        buffer = prepare_modbus_data_buffer(buffer);
+        Serial.print("Modbus: ");
+        Serial.println(buffer);
+        resp = http_handler.send_data(DATA_PATH, buffer);
+          if (resp == 200 || resp == 201) {
+          server_sync.process_response(
+            http_handler.get_response()
+          );
+        }
+#endif
+        if (cmd == 0) {
+        } else if (cmd == 4) {
+          // Send data
+        } else if (cmd == 2 || cmd == 3 || cmd == 5) {
+          buffer = prepare_config_data_buffer();
+          resp = http_handler.send_data(DATA_PATH, buffer);
+          // Config is updated. Reset device
+          reset_device();
+        }
+      }
     }
     vTaskDelay(1000);
   }
@@ -523,27 +545,17 @@ void update_websocket(void *params)
 
     if (ota_in_progress > 0) break;
 
-#ifdef GSM_ENABLED
-    if (wifi_state == ConnectedAP || gsm.state == GSMState::GPRSConnected) {
-      web_socket_client.poll();
-    }
-#else
     if (wifi_state == ConnectedAP ) {
       web_socket_client.poll();
     }
-#endif
 
-#ifdef GSM_ENABLED
-    if (server_sync.state == ServerConnectionState::Disconnected && (wifi_state == ConnectedAP || gsm.state == GSMState::GPRSConnected))
-#else
     if (server_sync.state == ServerConnectionState::Disconnected && wifi_state == ConnectedAP )
-#endif
     {
       Serial.println("Connecting to server...");
       web_socket_client.connect(
         dev_config.get_server_ip(),
         dev_config.get_server_port(),
-        "/iotgw1/"
+        WEBSOCKET_PATH
       );
     }
 
@@ -555,13 +567,13 @@ void update_websocket(void *params)
       if (dev_config.data.work_mode == SIMPLE_CLIENT) {
         char *buffer = prepare_data_buffer();
         web_socket_client.send(buffer);
-        #ifdef MODBUS_ENABLED
+#ifdef MODBUS_ENABLED
         buffer = modbus_handler.update();
         buffer = prepare_modbus_data_buffer(buffer);
         Serial.print("Modbus: ");
         Serial.println(buffer);
         web_socket_client.send(buffer);
-        #endif
+#endif
       }
     }
     vTaskDelay(1000);
@@ -572,8 +584,6 @@ void update_websocket(void *params)
 }
 
 #endif
-
-void(* reset_device) (void) = 0;//declare reset function at address 0
 
 void setup()
 {
@@ -598,7 +608,13 @@ void setup()
 
 #ifdef GSM_ENABLED
   gsm.init(&dev_config, &gsm_modem, &gsm_client);
-  http_handler.init(&http_client);
+  // sprintf(
+  //   ui_buffer,
+  //   "http://%s",
+  //   dev_config.get_server_ip()
+  // );
+  http_client = new HttpClient(gsm_client, dev_config.get_server_ip(), dev_config.get_server_port());
+  http_handler.init(http_client);
 #endif
 
   xTaskCreate(
@@ -720,7 +736,7 @@ void loop()
   ArduinoOTA.handle();
 
   #ifdef GSM_ENABLED
-    if (ota_in_progress == 0 && gsm_update_counter > 65000) {
+    if (ota_in_progress == 0 && gsm_update_counter > GSM_POLL_TIME) {
       gsm_update_counter = 0;
       gsm.check_gprs();
     }
