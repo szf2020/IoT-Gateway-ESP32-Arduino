@@ -70,13 +70,19 @@ uint8_t wifi_state = InIt;
 IPAddress ip;
 char mac_address[20];
 
-using namespace websockets;
-
-WebsocketsClient web_socket_client;
-// WiFiUDP udp_client;
-
 #ifdef LCD_ENABLED
 LCD lcd;
+#endif
+
+#ifdef GSM_ENABLED
+#include <ArduinoHttpClient.h>
+#include "http_handler.cpp"
+HttpClient http_client(gsm_client, dev_config.get_server_ip(), dev_config.get_server_port());
+HTTPHandler http_handler;
+#else
+#include <ArduinoWebsockets.h>
+using namespace websockets;
+WebsocketsClient web_socket_client;
 #endif
 
 char ui_buffer[20];
@@ -87,11 +93,13 @@ void update_ip_address() {
 #ifdef GSM_ENABLED
   if (gsm.state == GSMState::GPRSConnected) {
     ip = gsm_modem.localIP();
-  } else {
+  } else if (wifi_state == ConnectedAP) {
     ip = WiFi.localIP();
   }
 #else
-  ip = WiFi.localIP();
+  if (wifi_state == ConnectedAP) {
+    ip = WiFi.localIP();
+  }
 #endif
 }
 
@@ -239,7 +247,10 @@ void update_user_interface(void *params)
       button_status += 1;
       if (button_status > 5) {
         Serial.println("SmartConfigSetup");
+#ifdef GSM_ENABLED
+#else
         web_socket_client.close();
+#endif
         WiFi.disconnect();
         wifi_state = SmartConfigSetup;
         button_status = 0;
@@ -344,10 +355,6 @@ void WiFiEvent(WiFiEvent_t event)
   switch (event)
   {
   case ARDUINO_EVENT_WIFI_STA_GOT_IP:
-    //When connected set
-    //initializes the UDP state
-    //This initializes the transfer buffer
-    // udp.begin(WiFi.localIP(), udpPort);
     wifi_state = ConnectedAP;
     break;
   case ARDUINO_EVENT_WIFI_STA_DISCONNECTED:
@@ -366,6 +373,10 @@ void initialise_wifi(void *params)
   while (1)
   {
     if (ota_in_progress > 0) break;
+
+    // Temporary
+    // wifi_state = SmartConfigSetup;
+
     if (wifi_state == InIt)
     {
       WiFi.setSleep(false);
@@ -401,11 +412,62 @@ void initialise_wifi(void *params)
   vTaskDelete(NULL);
 }
 
+#ifdef GSM_ENABLED
+void update_http(void *params)
+{
+  char *buffer;
+  while (1)
+  {
+
+    if (ota_in_progress > 0) break;
+
+#ifdef GSM_ENABLED
+    if (wifi_state == ConnectedAP || gsm.state == GSMState::GPRSConnected) {
+      http_handler.poll();
+      server_sync.state = ServerConnectionState::Connected;
+    }
+#else
+    if (wifi_state == ConnectedAP ) {
+      http_handler.poll();
+    }
+#endif
+
+    if (server_sync.time_to_send() && server_sync.state == ServerConnectionState::Connected)
+    {
+      buffer = server_sync.get_heartbeat();
+      http_handler.send_heartbeat("/api/data/", buffer);
+      server_sync.send_success();
+      // if (dev_config.data.work_mode == SIMPLE_CLIENT) {
+      //   char *buffer = prepare_data_buffer();
+      //   web_socket_client.send(buffer);
+      //   #ifdef MODBUS_ENABLED
+      //   buffer = modbus_handler.update();
+      //   buffer = prepare_modbus_data_buffer(buffer);
+      //   Serial.print("Modbus: ");
+      //   Serial.println(buffer);
+      //   web_socket_client.send(buffer);
+      //   #endif
+      // }
+    }
+    vTaskDelay(1000);
+  }
+  /* delete a task when finish,
+  this will never happen because this is infinity loop */
+  vTaskDelete(NULL);
+}
+#else
 void onMessageCallback(WebsocketsMessage message)
 {
   Serial.print("Got Message: ");
   Serial.println(message.data());
-  uint8_t cmd = server_sync.process_response(message);
+
+  uint8_t cmd = 0;
+  char message_data[200];
+  String message_str;
+  if (message.isText()) {
+    message_str = message.data();
+    cmd = server_sync.process_response(message_str);
+  }
 
   if (cmd == 0) {
   } else if (cmd == 4) {
@@ -461,7 +523,15 @@ void update_websocket(void *params)
 
     if (ota_in_progress > 0) break;
 
-    web_socket_client.poll();
+#ifdef GSM_ENABLED
+    if (wifi_state == ConnectedAP || gsm.state == GSMState::GPRSConnected) {
+      web_socket_client.poll();
+    }
+#else
+    if (wifi_state == ConnectedAP ) {
+      web_socket_client.poll();
+    }
+#endif
 
 #ifdef GSM_ENABLED
     if (server_sync.state == ServerConnectionState::Disconnected && (wifi_state == ConnectedAP || gsm.state == GSMState::GPRSConnected))
@@ -501,6 +571,8 @@ void update_websocket(void *params)
   vTaskDelete(NULL);
 }
 
+#endif
+
 void(* reset_device) (void) = 0;//declare reset function at address 0
 
 void setup()
@@ -526,6 +598,7 @@ void setup()
 
 #ifdef GSM_ENABLED
   gsm.init(&dev_config, &gsm_modem, &gsm_client);
+  http_handler.init(&http_client);
 #endif
 
   xTaskCreate(
@@ -562,6 +635,15 @@ void setup()
       6,                 /* priority of the task */
       NULL);             /* Task handle to keep track of created task */
 
+#ifdef GSM_ENABLED
+  xTaskCreate(
+      update_http,        /* Task function. */
+      "update_http",      /* name of task. */
+      80000,              /* Stack size of task */
+      NULL,               /* parameter of the task */
+      8,                  /* priority of the task */
+      NULL);              /* Task handle to keep track of created task */
+#else
   // run callback when messages are received
   web_socket_client.onMessage(onMessageCallback);
   // run callback when events are occuring
@@ -574,6 +656,7 @@ void setup()
       NULL,               /* parameter of the task */
       8,                  /* priority of the task */
       NULL);              /* Task handle to keep track of created task */
+#endif
 
   ArduinoOTA.setPassword(dev_config.get_ota_admin_pass());
 

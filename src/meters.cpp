@@ -6,6 +6,7 @@
 
 // ADC
 #define ADC_AVG_COUNT_MAX 100
+#define ADC_HALF_VAL 4096/2
 
 const uint8_t ADC_PINS[6] = {
   METER_1_PIN,
@@ -20,12 +21,12 @@ class Meter {
 
   private:
     DevConfig *config;
-    uint16_t adc_avg_count_voltage;
-    uint16_t adc_avg_count_current;
+    uint32_t adc_avg_count_voltage;
+    uint32_t adc_avg_count_current;
     unsigned long adc_sum_values[6];
 
   public:
-    uint16_t adc_rms_values[6];
+    uint32_t adc_rms_values[6];
     float meter_values[6];
 
     Meter() {
@@ -48,12 +49,12 @@ class Meter {
 
     void read() {
       for (uint8_t i = 0; i < 6; i++) {
-        uint16_t sensor_val = analogRead(ADC_PINS[i]);
+        int32_t sensor_val = analogRead(ADC_PINS[i]) - ADC_HALF_VAL;
         adc_sum_values[i] = adc_sum_values[i] +  sensor_val * sensor_val;
       }
       adc_avg_count_voltage += 1;
 
-      if (adc_avg_count_voltage > ADC_AVG_COUNT_MAX)
+      if (adc_avg_count_voltage >= ADC_AVG_COUNT_MAX-1)
       {
         for (uint8_t i = 0; i < 6; i++)
         {

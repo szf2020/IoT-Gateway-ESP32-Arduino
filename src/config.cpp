@@ -5,7 +5,7 @@
 #include <Preferences.h>
 
 // GSM
-#define GSM_ENABLED
+// #define GSM_ENABLED
 #define TINY_GSM_MODEM_SIM800
 #define GSM_BAUDRATE 115200
 #define GSM_RX_PIN 26
@@ -19,11 +19,11 @@
 #define GSM_PASS ""
 
 // LCD
-// #define LCD_ENABLED
+#define LCD_ENABLED
 #define UI_UPDATE_SECONDS 0
 
 // Digital pin connected to the DHT sensor
-// #define DHT_ENABLED
+#define DHT_ENABLED
 #define DHT_PIN 23
 #define DHT_TYPE DHT11
 

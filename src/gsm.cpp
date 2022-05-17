@@ -3,7 +3,6 @@
 #define _GSM_H_
 #include "config.cpp"
 #include <TinyGsmClient.h>
-// #include <WebSocketsClient.h>
 
 // Configure TinyGSM library
 #define TINY_GSM_MODEM_SIM800      // Modem is SIM800
