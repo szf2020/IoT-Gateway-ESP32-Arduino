@@ -122,7 +122,7 @@ char* prepare_data_buffer() {
   sprintf(
     server_sync.shared_buffer,
     "{"
-    "\"config\": { \"devType\": \"%s\",, \"devId\": %u, \"workmode\": %hu, \"mac\": \"%s\" },"
+    "\"config\": { \"devType\": \"%s\", \"devId\": %u, \"workmode\": %hu, \"mac\": \"%s\" },"
     "\"adc\": { \"1\": %u, \"2\": %u, \"3\": %u, \"4\": %u, \"5\": %u, \"6\": %u },"
     "\"dht\": { \"state\": %hu, \"temperature\": %.2f, \"humidity\": %.2f, \"hic\": %.2f },"
     "\"meters\": { \"1\": %.2f, \"2\": %.2f, \"3\": %.2f, \"4\": %.2f, \"5\": %.2f, \"6\": %.2f },"
@@ -140,7 +140,7 @@ char* prepare_data_buffer() {
   sprintf(
     server_sync.shared_buffer,
     "{"
-    "\"config\": { \"devType\": \"%s\",, \"devId\": %u, \"workmode\": %hu, \"mac\": \"%s\" },"
+    "\"config\": { \"devType\": \"%s\", \"devId\": %u, \"workmode\": %hu, \"mac\": \"%s\" },"
     "\"adc\": { \"1\": %u, \"2\": %u, \"3\": %u, \"4\": %u, \"5\": %u, \"6\": %u },"
     "\"meters\": { \"1\": %.2f, \"2\": %.2f, \"3\": %.2f, \"4\": %.2f, \"5\": %.2f, \"6\": %.2f },"
     "\"network\": { \"state\": %s, \"ip\": \"%hu.%hu.%hu.%hu\", \"tts\": %u }"
@@ -329,7 +329,7 @@ void update_meters(void *params)
   {
     if (ota_in_progress > 0) break;
     meter.read();
-    vTaskDelay(3);
+    vTaskDelay(5);
   }
   /* delete a task when finish,
   this will never happen because this is infinity loop */
