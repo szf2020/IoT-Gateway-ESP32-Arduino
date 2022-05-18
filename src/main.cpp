@@ -561,7 +561,7 @@ void update_websocket(void *params)
 
     if (server_sync.time_to_send() && server_sync.state == ServerConnectionState::Connected)
     {
-      buffer = server_sync.get_heartbeat();
+      buffer = server_sync.get_heartbeat(mac_address);
       web_socket_client.send(buffer);
       server_sync.send_success();
       if (dev_config.data.work_mode == SIMPLE_CLIENT) {
