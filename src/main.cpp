@@ -122,13 +122,13 @@ char* prepare_data_buffer() {
   sprintf(
     server_sync.shared_buffer,
     "{"
-    "\"config\": { \"hwVer\": %hu, \"swVer\": %hu, \"devId\": %u, \"workmode\": %hu, \"mac\": \"%s\" },"
+    "\"config\": { \"devType\": \"%s\",, \"devId\": %u, \"workmode\": %hu, \"mac\": \"%s\" },"
     "\"adc\": { \"1\": %u, \"2\": %u, \"3\": %u, \"4\": %u, \"5\": %u, \"6\": %u },"
     "\"dht\": { \"state\": %hu, \"temperature\": %.2f, \"humidity\": %.2f, \"hic\": %.2f },"
     "\"meters\": { \"1\": %.2f, \"2\": %.2f, \"3\": %.2f, \"4\": %.2f, \"5\": %.2f, \"6\": %.2f },"
     "\"network\": { \"state\": %s, \"ip\": \"%hu.%hu.%hu.%hu\", \"tts\": %u }"
     "}",
-    dev_config.data.hw_ver, dev_config.data.sw_ver, dev_config.data.dev_id, dev_config.data.work_mode, mac_address,
+    DEVICE_TYPE, dev_config.data.dev_id, dev_config.data.work_mode, mac_address,
     meter.adc_rms_values[0], meter.adc_rms_values[1], meter.adc_rms_values[2],
     meter.adc_rms_values[3], meter.adc_rms_values[4], meter.adc_rms_values[5],
     dht_meter.dht_state, dht_meter.temperature, dht_meter.humidity, dht_meter.hic,
@@ -140,12 +140,12 @@ char* prepare_data_buffer() {
   sprintf(
     server_sync.shared_buffer,
     "{"
-    "\"config\": { \"hwVer\": %hu, \"swVer\": %hu, \"devId\": %u, \"workmode\": %hu, \"mac\": \"%s\" },"
+    "\"config\": { \"devType\": \"%s\",, \"devId\": %u, \"workmode\": %hu, \"mac\": \"%s\" },"
     "\"adc\": { \"1\": %u, \"2\": %u, \"3\": %u, \"4\": %u, \"5\": %u, \"6\": %u },"
     "\"meters\": { \"1\": %.2f, \"2\": %.2f, \"3\": %.2f, \"4\": %.2f, \"5\": %.2f, \"6\": %.2f },"
     "\"network\": { \"state\": %s, \"ip\": \"%hu.%hu.%hu.%hu\", \"tts\": %u }"
     "}",
-    dev_config.data.hw_ver, dev_config.data.sw_ver, dev_config.data.dev_id, dev_config.data.work_mode, mac_address,
+    DEVICE_TYPE, dev_config.data.dev_id, dev_config.data.work_mode, mac_address,
     meter.adc_rms_values[0], meter.adc_rms_values[1], meter.adc_rms_values[2],
     meter.adc_rms_values[3], meter.adc_rms_values[4], meter.adc_rms_values[5],
     meter.meter_values[0], meter.meter_values[1], meter.meter_values[2],
@@ -159,8 +159,8 @@ char* prepare_data_buffer() {
 char* prepare_modbus_data_buffer(char *modbus_data) {
   sprintf(
     server_sync.shared_buffer,
-    "{\"config\":{\"hwVer\":%hu,\"swVer\":%hu,\"devId\":%u,\"workmode\":%hu,\"mac\":\"%s\"},\"modbus_data\":%s}",
-    dev_config.data.hw_ver, dev_config.data.sw_ver, dev_config.data.dev_id, dev_config.data.work_mode, mac_address,
+    "{\"config\":{\"devType\": \"%s\",\"devId\":%u,\"workmode\":%hu,\"mac\":\"%s\"},\"modbus_data\":%s}",
+    DEVICE_TYPE, dev_config.data.dev_id, dev_config.data.work_mode, mac_address,
     modbus_data
   );
   return server_sync.shared_buffer;
@@ -171,7 +171,7 @@ char* prepare_config_data_buffer() {
   sprintf(
       server_sync.shared_buffer,
       "{\"config\": {"
-      "\"hwVer\": %hu, \"swVer\": %hu, \"devId\": %u, \"mac\": \"%s\","
+      "\"devType\": \"%s\", \"hwVer\": %hu, \"swVer\": %hu, \"devId\": %u, \"mac\": \"%s\","
       "\"workMode\": %hu, \"heartbeatFreq\": %u,"
       "\"serverIp\": \"%s\", \"serverPort\": %u,"
       "\"calCoefficients\": [%.2f, %.2f, %.2f, %.2f, %.2f, %.2f],"
@@ -181,7 +181,7 @@ char* prepare_config_data_buffer() {
       "\"slave_2\": [[%hu,%u,%hu],[%hu,%u,%hu],[%hu,%u,%hu],[%hu,%u,%hu],[%hu,%u,%hu]],"
       "\"slave_3\": [[%hu,%u,%hu],[%hu,%u,%hu],[%hu,%u,%hu],[%hu,%u,%hu],[%hu,%u,%hu]]"
       "}}}",
-      dev_config.data.hw_ver, dev_config.data.sw_ver, dev_config.data.dev_id, mac_address,
+      DEVICE_TYPE, dev_config.data.hw_ver, dev_config.data.sw_ver, dev_config.data.dev_id, mac_address,
       dev_config.data.work_mode, dev_config.data.heartbeat_freq,
       dev_config.data.server_ip, dev_config.data.server_port,
       dev_config.data.cal_coefficients[0], dev_config.data.cal_coefficients[1], dev_config.data.cal_coefficients[2],

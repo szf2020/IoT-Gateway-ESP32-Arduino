@@ -4,6 +4,10 @@
 
 #include <Preferences.h>
 
+#define DEVICE_TYPE "IOT-GW-V1"
+#define HW_VERSION 1
+#define SW_VERSION 1
+
 #define HEARTBEAT_DATA_PATH "/api/heartbeat/"
 #define DATA_PATH "/api/data/"
 #define WEBSOCKET_PATH "/iotgw1/"
@@ -166,8 +170,8 @@ class DevConfig {
       strcpy(data.server_ip, DEFAULT_SERVER_IP);
       data.server_port = DEFAULT_SERVER_PORT;
 
-      data.hw_ver = 1;
-      data.sw_ver = 1;
+      data.hw_ver = HW_VERSION;
+      data.sw_ver = SW_VERSION;
       data.dev_id = 0;
       data.work_mode = DevWorkModes::SIMPLE_CLIENT;
       data.heartbeat_freq = DEFAULT_HEARTBEAT_FREQ_SECONDS;
