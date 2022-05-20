@@ -67,6 +67,7 @@ enum WiFiState
 };
 
 uint8_t wifi_state = InIt;
+uint16_t wifi_state_time = 0;
 IPAddress ip;
 char mac_address[20];
 
@@ -388,6 +389,14 @@ void initialise_wifi(void *params)
       WiFi.begin();
       WiFi.macAddress().toCharArray(mac_address, 20, 0);
       wifi_state = ConnectingAp;
+    }
+
+    if (wifi_state == ConnectingAp) {
+      vTaskDelay(1000);
+      wifi_state_time += 1;
+      if (wifi_state_time >= MAX_CONNECTING_TIME_SECONDS) {
+        reset_device();
+      }
     }
 
     if (wifi_state == SmartConfigSetup)

@@ -73,13 +73,13 @@ public:
     String message_str_temp;
     message_str.toCharArray(message_data, 200, 0);
     if (message_str.startsWith(HEARTBEAT_ACK)) {
-      Serial.println("process reponse heartbeat");
+      Serial.println("process response heartbeat");
       if (config->data.work_mode == SIMPLE_CLIENT) {
         return 1;
       }
     } else if (message_str.startsWith("CALIBRATE[")) {
       // CALIBRATE[0] {23,34}
-      Serial.println("process reponse calibrate");
+      Serial.println("process response calibrate");
       uint8_t idx = int(message_data[10] - '0');
       uint8_t str_length = strlen(message_data);
       message_str = message_str.substring(14, str_length - 1);
@@ -98,7 +98,7 @@ public:
       return 2;
     } else if (message_str.startsWith("CONFIG[")) {
       // CONFIG[0] {23}
-      Serial.println("process reponse config");
+      Serial.println("process response config");
       // Serial.println(message_str);
       uint8_t idx = int(message_data[7] - '0');
       message_str = message_str.substring(11, strlen(message_data) - 1);
@@ -152,7 +152,7 @@ public:
       return 3;
     } else if (message_str.startsWith("MODBUS[")) {
       // MODBUS[slave_idx,slave_id] [{function_code,address,length},{function_code,address,length}...]
-      Serial.println("process reponse modbus config");
+      Serial.println("process response modbus config");
       uint8_t idx = int(message_data[7] - '0');
       uint8_t slave_id = int(message_data[9] - '0');
       uint8_t str_length = strlen(message_data);

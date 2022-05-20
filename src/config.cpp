@@ -12,8 +12,10 @@
 #define DATA_PATH "/api/data/"
 #define WEBSOCKET_PATH "/iotgw1/"
 
+#define MAX_CONNECTING_TIME_SECONDS 300
+
 // GSM
-#define GSM_ENABLED
+// #define GSM_ENABLED
 #define GSM_POLL_TIME 40000
 #define TINY_GSM_MODEM_SIM800
 #define GSM_BAUDRATE 115200
@@ -28,11 +30,11 @@
 #define GSM_PASS ""
 
 // LCD
-// #define LCD_ENABLED
+#define LCD_ENABLED
 #define UI_UPDATE_SECONDS 0
 
 // Digital pin connected to the DHT sensor
-// #define DHT_ENABLED
+#define DHT_ENABLED
 #define DHT_PIN 23
 #define DHT_TYPE DHT11
 
