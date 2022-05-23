@@ -71,17 +71,23 @@ public:
   uint8_t process_response(String message_str) {
     char message_data[200];
     String message_str_temp;
+    uint8_t str_length, idx;
     message_str.toCharArray(message_data, 200, 0);
     if (message_str.startsWith(HEARTBEAT_ACK)) {
       Serial.println("process response heartbeat");
+      str_length = strlen(message_data);
+      message_str = message_str.substring(14, str_length - 1);
+      message_str.toCharArray(message_data, 200, 0);
+      sscanf(message_data, "[%u]", &config->data.timestamp);
+      config->set_timestamp();
       if (config->data.work_mode == SIMPLE_CLIENT) {
         return 1;
       }
     } else if (message_str.startsWith("CALIBRATE[")) {
       // CALIBRATE[0] {23,34}
       Serial.println("process response calibrate");
-      uint8_t idx = int(message_data[10] - '0');
-      uint8_t str_length = strlen(message_data);
+      idx = int(message_data[10] - '0');
+      str_length = strlen(message_data);
       message_str = message_str.substring(14, str_length - 1);
 
       Serial.println(idx);
@@ -100,7 +106,7 @@ public:
       // CONFIG[0] {23}
       Serial.println("process response config");
       // Serial.println(message_str);
-      uint8_t idx = int(message_data[7] - '0');
+      idx = int(message_data[7] - '0');
       message_str = message_str.substring(11, strlen(message_data) - 1);
       message_str.toCharArray(message_data, 200, 0);
 

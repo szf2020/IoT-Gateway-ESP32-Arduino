@@ -2,8 +2,6 @@
 #include "freertos/task.h"
 #include <WiFi.h>
 #include <Adafruit_Sensor.h>
-// #include <WiFiUdp.h>
-// #include "wifi_events.h"
 
 #include <Preferences.h>
 #include <ArduinoOTA.h>
@@ -30,6 +28,11 @@
 #include "gsm.cpp"
 #endif
 
+#ifdef SD_CARD_ENABLED
+#include "SD.h"
+#include "sd_handler.cpp"
+#endif
+
 uint8_t ota_in_progress = 0;
 uint8_t led_status = 0;
 uint8_t button_status = 0;
@@ -37,6 +40,7 @@ uint8_t button_status = 0;
 // Serial
 uint8_t serial_state = 0;
 
+uint16_t mills_tracker = 0;
 Preferences preferences;
 DevConfig dev_config;
 ServerSync server_sync;
@@ -56,6 +60,11 @@ GSM gsm;
 TinyGsm gsm_modem(Serial2);
 TinyGsmClient gsm_client(gsm_modem);
 uint16_t gsm_update_counter = 0;
+#endif
+
+
+#ifdef SD_CARD_ENABLED
+SDHandler sd_handler;
 #endif
 
 enum WiFiState
@@ -84,6 +93,10 @@ HTTPHandler http_handler;
 #include <ArduinoWebsockets.h>
 using namespace websockets;
 WebsocketsClient web_socket_client;
+#endif
+
+#ifdef SD_CARD_ENABLED
+File root;
 #endif
 
 char ui_buffer[20];
@@ -123,12 +136,14 @@ char* prepare_data_buffer() {
   sprintf(
     server_sync.shared_buffer,
     "{"
+    "\"timestamp\": %u,"
     "\"config\": { \"devType\": \"%s\", \"devId\": %u, \"workmode\": %hu, \"mac\": \"%s\" },"
     "\"adc\": { \"1\": %u, \"2\": %u, \"3\": %u, \"4\": %u, \"5\": %u, \"6\": %u },"
     "\"dht\": { \"state\": %hu, \"temperature\": %.2f, \"humidity\": %.2f, \"hic\": %.2f },"
     "\"meters\": { \"1\": %.2f, \"2\": %.2f, \"3\": %.2f, \"4\": %.2f, \"5\": %.2f, \"6\": %.2f },"
     "\"network\": { \"state\": %s, \"ip\": \"%hu.%hu.%hu.%hu\", \"tts\": %u }"
     "}",
+    dev_config.data.timestamp,
     DEVICE_TYPE, dev_config.data.dev_id, dev_config.data.work_mode, mac_address,
     meter.adc_rms_values[0], meter.adc_rms_values[1], meter.adc_rms_values[2],
     meter.adc_rms_values[3], meter.adc_rms_values[4], meter.adc_rms_values[5],
@@ -141,11 +156,13 @@ char* prepare_data_buffer() {
   sprintf(
     server_sync.shared_buffer,
     "{"
+    "\"timestamp\": %u,"
     "\"config\": { \"devType\": \"%s\", \"devId\": %u, \"workmode\": %hu, \"mac\": \"%s\" },"
     "\"adc\": { \"1\": %u, \"2\": %u, \"3\": %u, \"4\": %u, \"5\": %u, \"6\": %u },"
     "\"meters\": { \"1\": %.2f, \"2\": %.2f, \"3\": %.2f, \"4\": %.2f, \"5\": %.2f, \"6\": %.2f },"
     "\"network\": { \"state\": %s, \"ip\": \"%hu.%hu.%hu.%hu\", \"tts\": %u }"
     "}",
+    dev_config.data.timestamp,
     DEVICE_TYPE, dev_config.data.dev_id, dev_config.data.work_mode, mac_address,
     meter.adc_rms_values[0], meter.adc_rms_values[1], meter.adc_rms_values[2],
     meter.adc_rms_values[3], meter.adc_rms_values[4], meter.adc_rms_values[5],
@@ -160,7 +177,10 @@ char* prepare_data_buffer() {
 char* prepare_modbus_data_buffer(char *modbus_data) {
   sprintf(
     server_sync.shared_buffer,
-    "{\"config\":{\"devType\": \"%s\",\"devId\":%u,\"workmode\":%hu,\"mac\":\"%s\"},\"modbus_data\":%s}",
+    "{"
+    "\"timestamp\": %u,"
+    "\"config\":{\"devType\": \"%s\",\"devId\":%u,\"workmode\":%hu,\"mac\":\"%s\"},\"modbus_data\":%s}",
+    dev_config.data.timestamp,
     DEVICE_TYPE, dev_config.data.dev_id, dev_config.data.work_mode, mac_address,
     modbus_data
   );
@@ -171,7 +191,9 @@ char* prepare_config_data_buffer() {
   update_ip_address();
   sprintf(
       server_sync.shared_buffer,
-      "{\"config\": {"
+      "{"
+      "\"timestamp\": %u,"
+      "\"config\": {"
       "\"devType\": \"%s\", \"hwVer\": %hu, \"swVer\": %hu, \"devId\": %u, \"mac\": \"%s\","
       "\"workMode\": %hu, \"heartbeatFreq\": %u,"
       "\"serverIp\": \"%s\", \"serverPort\": %u,"
@@ -182,6 +204,7 @@ char* prepare_config_data_buffer() {
       "\"slave_2\": [[%hu,%u,%hu],[%hu,%u,%hu],[%hu,%u,%hu],[%hu,%u,%hu],[%hu,%u,%hu]],"
       "\"slave_3\": [[%hu,%u,%hu],[%hu,%u,%hu],[%hu,%u,%hu],[%hu,%u,%hu],[%hu,%u,%hu]]"
       "}}}",
+      dev_config.data.timestamp,
       DEVICE_TYPE, dev_config.data.hw_ver, dev_config.data.sw_ver, dev_config.data.dev_id, mac_address,
       dev_config.data.work_mode, dev_config.data.heartbeat_freq,
       dev_config.data.server_ip, dev_config.data.server_port,
@@ -315,9 +338,19 @@ void update_user_interface(void *params)
     } else {
       ui_update_counter -= 1;
     }
-    #endif
+#endif
+
+#ifdef SD_CARD_ENABLED
+    // Serial.println(sd_handler.get_card_info());
+#endif
 
     vTaskDelay(3000);
+    unsigned long mills_now = millis();
+    int diff_mills = mills_now - mills_tracker;
+    if (diff_mills / 1000 > 0) {
+      dev_config.data.timestamp += diff_mills / 1000;
+      mills_tracker = mills_now;
+    }
   }
   /* delete a task when finish,
   this will never happen because this is infinity loop */
@@ -434,12 +467,26 @@ void update_http(void *params)
 
     if (ota_in_progress > 0) break;
 
+    bool time_to_send = server_sync.time_to_send();
+
+#ifdef SD_CARD_ENABLED
+    if (time_to_send) {
+      buffer = prepare_data_buffer();
+      sd_handler.add_data(dev_config.data.timestamp, buffer);
+#ifdef MODBUS_ENABLED
+      buffer = modbus_handler.update();
+      buffer = prepare_modbus_data_buffer(buffer);
+      sd_handler.add_data(dev_config.data.timestamp, buffer);
+#endif
+    }
+#endif
+
     if (gsm.state == GSMState::GPRSConnected) {
       http_handler.poll();
       server_sync.state = ServerConnectionState::Connected;
     }
 
-    if (server_sync.time_to_send() && gsm.state == GSMState::GPRSConnected && server_sync.state == ServerConnectionState::Connected)
+    if (time_to_send && gsm.state == GSMState::GPRSConnected && server_sync.state == ServerConnectionState::Connected)
     {
       int resp;
       resp = http_handler.send_heartbeat(HEARTBEAT_DATA_PATH, dev_config.data.dev_id, mac_address);
@@ -504,13 +551,13 @@ void onMessageCallback(WebsocketsMessage message)
   } else if (cmd == 4) {
     char *buffer = prepare_data_buffer();
     web_socket_client.send(buffer);
-    #ifdef MODBUS_ENABLED
+#ifdef MODBUS_ENABLED
     buffer = modbus_handler.update();
     buffer = prepare_modbus_data_buffer(buffer);
     Serial.print("Modbus: ");
     Serial.println(buffer);
     web_socket_client.send(buffer);
-    #endif
+#endif
   } else if (cmd == 2 || cmd == 3 || cmd == 5) {
     char *buffer = prepare_config_data_buffer();
     web_socket_client.send(buffer);
@@ -558,6 +605,20 @@ void update_websocket(void *params)
       web_socket_client.poll();
     }
 
+    bool time_to_send = server_sync.time_to_send();
+
+#ifdef SD_CARD_ENABLED
+    if (time_to_send) {
+      buffer = prepare_data_buffer();
+      sd_handler.add_data(dev_config.data.timestamp, buffer);
+#ifdef MODBUS_ENABLED
+      buffer = modbus_handler.update();
+      buffer = prepare_modbus_data_buffer(buffer);
+      sd_handler.add_data(dev_config.data.timestamp, buffer);
+#endif
+    }
+#endif
+
     if (server_sync.state == ServerConnectionState::Disconnected && wifi_state == ConnectedAP )
     {
       Serial.println("Connecting to server...");
@@ -568,7 +629,7 @@ void update_websocket(void *params)
       );
     }
 
-    if (server_sync.time_to_send() && server_sync.state == ServerConnectionState::Connected)
+    if (time_to_send && server_sync.state == ServerConnectionState::Connected)
     {
       buffer = server_sync.get_heartbeat(mac_address);
       web_socket_client.send(buffer);
@@ -624,6 +685,14 @@ void setup()
   // );
   http_client = new HttpClient(gsm_client, dev_config.get_server_ip(), dev_config.get_server_port());
   http_handler.init(http_client);
+#endif
+
+#ifdef SD_CARD_ENABLED
+  if(!SD.begin(SD_CS_PIN)){
+      Serial.println("Card Mount Failed");
+      return;
+  }
+  sd_handler.init(&SD, &SD);
 #endif
 
   xTaskCreate(

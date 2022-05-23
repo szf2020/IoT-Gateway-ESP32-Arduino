@@ -27,8 +27,26 @@ Meters:
                             |
                            10k
                             |    
-    Pin33 <-----1k----|-----|------>3.5mm jack
+    Pin33 <-----1k----|-----|------>3.5mm jack ref-v
                       |     |
                     zener  10k
                       |     |
                       -----Gnd
+
+3.5 mm jack:
+
+    Current Sensor:
+
+        Sleeve | Ring | Ring | Tip
+          |       |      |      |
+         1k      3V3    ref-v  NC
+          |       |      |
+          |       |-10k--|--10k------>Gnd
+          |
+          |--zener---Gnd
+          |
+          uC
+
+GSM:
+
+SD Card:

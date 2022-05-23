@@ -14,6 +14,14 @@
 
 #define MAX_CONNECTING_TIME_SECONDS 300
 
+// SD card
+#define SD_CARD_ENABLED
+#define SD_CS_PIN 5
+#define SD_MOSI_PIN 23
+#define SD_MISO_PIN 19
+#define SD_CLK_PIN 18
+#define SD_FILE_CHANGE_SECONDS 3600
+
 // GSM
 // #define GSM_ENABLED
 #define GSM_POLL_TIME 40000
@@ -21,21 +29,21 @@
 #define GSM_BAUDRATE 115200
 #define GSM_RX_PIN 26
 #define GSM_TX_PIN 27
-#define GSM_RST_PIN 5
-#define GSM_POWERKEY_PIN 4 
-#define GSM_POWER_PIN 23
+#define GSM_RST_PIN 5 // --> 15
+#define GSM_POWERKEY_PIN 4 // --> 4
+#define GSM_POWER_PIN 23 // --> 25
 // Leave empty, if missing user or pass
 #define GSM_APN  ""
 #define GSM_USER ""
 #define GSM_PASS ""
 
 // LCD
-#define LCD_ENABLED
+// #define LCD_ENABLED
 #define UI_UPDATE_SECONDS 0
 
 // Digital pin connected to the DHT sensor
-#define DHT_ENABLED
-#define DHT_PIN 23
+// #define DHT_ENABLED
+#define DHT_PIN 23 // --> 14
 #define DHT_TYPE DHT11
 
 enum DevWorkModes {
@@ -49,9 +57,11 @@ enum DevWorkModes {
 #define DEFAULT_SERVER_PORT 80
 #define DEFAULT_OTA_ADMIN_PASS "admin"
 
+#define DEFAULT_TIMESTAMP 1652997600 // 25 May 22
+
 // LED stuff
-#define LED_PIN 18
-#define BUTTON_PIN 19
+#define LED_PIN 12 //18 // --> 12
+#define BUTTON_PIN 13 //19 // --> 13
 
 // Meter pins
 #define METER_1_PIN 33
@@ -62,13 +72,13 @@ enum DevWorkModes {
 #define METER_6_PIN 39
 
 // Modbus
-#define MODBUS_ENABLED
+// #define MODBUS_ENABLED
 #define MAX_MODBUS_SLAVES 3
 #define MAX_ADDRESSES_PER_MODBUS_SLAVE 5
 #define MODBUS_BAUDRATE 9600
 #define MODBUS_RX_PIN 16
 #define MODBUS_TX_PIN 17
-#define MODBUS_RTS_PIN 5
+#define MODBUS_RTS_PIN 5 // --> 27
 
 typedef struct {
   uint8_t func_code;
@@ -83,6 +93,7 @@ typedef struct {
 
   uint8_t work_mode;
   uint16_t heartbeat_freq;
+  uint32_t timestamp;
   char server_ip[50];
   uint16_t server_port;
 
@@ -177,6 +188,7 @@ class DevConfig {
       data.dev_id = 0;
       data.work_mode = DevWorkModes::SIMPLE_CLIENT;
       data.heartbeat_freq = DEFAULT_HEARTBEAT_FREQ_SECONDS;
+      data.timestamp = DEFAULT_TIMESTAMP;
 
       for (uint8_t i=0; i < 6; i++) {
         data.cal_coefficients[i] = 0;
@@ -195,6 +207,7 @@ class DevConfig {
       data.dev_id = this->prefs->getUShort("devId");
       data.work_mode = this->prefs->getChar("workMode");
       data.heartbeat_freq = this->prefs->getUShort("heartbeatFreq");
+      data.timestamp = this->prefs->getUInt("timestamp");
 
       String st = this->prefs->getString("serverIp", "");
       st.toCharArray(data.server_ip, 50);
@@ -233,6 +246,10 @@ class DevConfig {
         }
       }
       this->prefs->end();
+    }
+
+    void set_timestamp() {
+      this->prefs->putUInt("timestamp", data.timestamp);
     }
 
     void set_config(void) {
