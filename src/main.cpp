@@ -40,7 +40,7 @@ uint8_t button_status = 0;
 // Serial
 uint8_t serial_state = 0;
 
-uint16_t mills_tracker = 0;
+unsigned long mills_tracker = 0;
 Preferences preferences;
 DevConfig dev_config;
 ServerSync server_sync;

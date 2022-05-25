@@ -21,7 +21,6 @@ class SDHandler {
     this->fs = fs;
     this->start_new_file();
     this->current_file_timestamp = DEFAULT_TIMESTAMP;
-    sprintf(this->current_file, "/%u-default.csv", this->current_file_timestamp);
   }
 
   void start_new_file() {
