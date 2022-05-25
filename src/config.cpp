@@ -4,20 +4,18 @@
 
 #include <Preferences.h>
 
-#define DEVICE_TYPE "IOT-GW-V1"
+// #define DEVICE_TYPE "IOT-GW-V1"
 
-// #ifdef DEVICE_TYPE "IOT-GW-V1-MODBUS-WIFI"
-// // #define SD_CARD_ENABLED
-// #define LCD_ENABLED
-// #define DHT_ENABLED
-// #define MODBUS_ENABLED
-// #endif
+#define DEVICE_TYPE "IOT-GW-V1-MODBUS-WIFI"
+#define SD_CARD_ENABLED
+#define LCD_ENABLED
+#define DHT_ENABLED
+#define MODBUS_ENABLED
 
 // #ifdef DEVICE_TYPE "IOT-GW-V1-MODBUS-GSM"
-// #define GSM_ENABLED
 // #define SD_CARD_ENABLED
+// #define GSM_ENABLED
 // #define MODBUS_ENABLED
-// #endif
 
 #define HW_VERSION 1
 #define SW_VERSION 1
@@ -52,12 +50,12 @@
 #define GSM_PASS ""
 
 // LCD
-#define LCD_ENABLED
+// #define LCD_ENABLED
 #define UI_UPDATE_SECONDS 0
 
 // Digital pin connected to the DHT sensor
-#define DHT_ENABLED
-#define DHT_PIN 14
+// #define DHT_ENABLED
+#define DHT_PIN 13
 #define DHT_TYPE DHT11
 
 enum DevWorkModes {
@@ -86,7 +84,7 @@ enum DevWorkModes {
 #define METER_6_PIN 39
 
 // Modbus
-#define MODBUS_ENABLED
+// #define MODBUS_ENABLED
 #define MAX_MODBUS_SLAVES 3
 #define MAX_ADDRESSES_PER_MODBUS_SLAVE 5
 #define MODBUS_BAUDRATE 9600

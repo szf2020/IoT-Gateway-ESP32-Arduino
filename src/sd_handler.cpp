@@ -21,7 +21,7 @@ class SDHandler {
     this->fs = fs;
     this->start_new_file();
     this->current_file_timestamp = DEFAULT_TIMESTAMP;
-    sprintf(this->current_file, "/%u.txt", this->current_file_timestamp);
+    sprintf(this->current_file, "/%u-default.csv", this->current_file_timestamp);
   }
 
   void start_new_file() {
@@ -45,12 +45,17 @@ class SDHandler {
     }
   }
 
-  void add_data(uint32_t timestamp, const char * message){
-    int diff = timestamp - current_file_timestamp;
+  bool is_new_file(uint32_t timestamp) {
+    int diff = timestamp - this->current_file_timestamp;
     if (diff > SD_FILE_CHANGE_SECONDS) {
-      current_file_timestamp = timestamp;
-      sprintf(this->current_file, "/%u.txt", this->current_file_timestamp);
+      this->current_file_timestamp = timestamp;
+      return true;
     }
+    return false;
+  }
+
+  void add_data(char *data_type, const char * message){
+    sprintf(this->current_file, "/%u-%s.csv", this->current_file_timestamp, data_type);
     Serial.printf("Appending to file: %s\n", this->current_file);
     File file = this->fs->open(this->current_file, FILE_APPEND);
     if(!file){

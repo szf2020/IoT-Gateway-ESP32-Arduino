@@ -120,7 +120,7 @@ void update_ip_address() {
 // declare reset function at address 0
 void(* reset_device) (void) = 0;
 
-char* prepare_data_buffer(bool csv=0, bool add_header=0) {
+char* prepare_data_buffer(bool csv=false, bool add_header=false) {
 
   char network_state[10];
   update_ip_address();
@@ -131,8 +131,8 @@ char* prepare_data_buffer(bool csv=0, bool add_header=0) {
   sprintf(network_state, "\"%hu, %hu\"", wifi_state, server_sync.state);
 #endif
 
-  if (csv > 0) {
-    if (add_header > 0) {
+  if (csv) {
+    if (add_header) {
       sprintf(server_sync.shared_buffer,
         "timestamp,config_devType,config_devId,config_workmode,config_mac,"
         "adc_1,adc_2,adc_3,adc_4,adc_5,adc_6,"
@@ -190,17 +190,20 @@ char* prepare_data_buffer(bool csv=0, bool add_header=0) {
   return server_sync.shared_buffer;
 }
 
-char* prepare_modbus_data_buffer(char *modbus_data, bool csv=0, bool add_header=0) {
+char* prepare_modbus_data_buffer(char *modbus_data, bool csv=false, bool add_header=false) {
 
-  if (csv > 0) {
-    if (add_header > 0) {
-      sprintf(server_sync.shared_buffer,
-        "timestamp,config_devType,config_devId,config_workmode,config_mac,"
-        "modbus_data\n",
-        dev_config.data.timestamp, DEVICE_TYPE, dev_config.data.dev_id, dev_config.data.work_mode, mac_address,
-        modbus_data
+  if (csv) {
+    if (add_header) {
+      sprintf(
+        server_sync.shared_buffer,
+        "timestamp,config_devType,config_devId,config_workmode,config_mac,modbus_data\n"
       );
     }
+    sprintf(server_sync.shared_buffer,
+      "%u,%s,%u,%hu,%s,\"%s\"\n",
+      dev_config.data.timestamp, DEVICE_TYPE, dev_config.data.dev_id, dev_config.data.work_mode, mac_address,
+      modbus_data
+    );
   } else {
     sprintf(
       server_sync.shared_buffer,
@@ -499,12 +502,13 @@ void update_http(void *params)
 
 #ifdef SD_CARD_ENABLED
     if (time_to_send) {
-      buffer = prepare_data_buffer();
-      sd_handler.add_data(dev_config.data.timestamp, buffer);
+      bool add_header = sd_handler.is_new_file(dev_config.data.timestamp);
+      buffer = prepare_data_buffer(true, add_header);
+      sd_handler.add_data("data", buffer);
 #ifdef MODBUS_ENABLED
       buffer = modbus_handler.update();
-      buffer = prepare_modbus_data_buffer(buffer);
-      sd_handler.add_data(dev_config.data.timestamp, buffer);
+      buffer = prepare_modbus_data_buffer(buffer, true, add_header);
+      sd_handler.add_data("modbus", buffer);
 #endif
     }
 #endif
@@ -637,12 +641,13 @@ void update_websocket(void *params)
 
 #ifdef SD_CARD_ENABLED
     if (time_to_send) {
-      buffer = prepare_data_buffer();
-      sd_handler.add_data(dev_config.data.timestamp, buffer);
+      bool add_header = sd_handler.is_new_file(dev_config.data.timestamp);
+      buffer = prepare_data_buffer(true, add_header);
+      sd_handler.add_data("data", buffer);
 #ifdef MODBUS_ENABLED
       buffer = modbus_handler.update();
-      buffer = prepare_modbus_data_buffer(buffer);
-      sd_handler.add_data(dev_config.data.timestamp, buffer);
+      buffer = prepare_modbus_data_buffer(buffer, true, add_header);
+      sd_handler.add_data("modbus", buffer);
 #endif
     }
 #endif
