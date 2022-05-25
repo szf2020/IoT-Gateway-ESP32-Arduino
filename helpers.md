@@ -9,3 +9,6 @@ https://diyusthad.com/2019/07/esp32-with-onboard-sim800.html
 https://randomnerdtutorials.com/esp32-sim800l-publish-data-to-cloud/
 https://randomnerdtutorials.com/esp32-websocket-server-arduino/
 https://randomnerdtutorials.com/esp32-microsd-card-arduino/
+
+
+https://randomnerdtutorials.com/esp32-pinout-reference-gpios/#:~:text=Note%3A%20ADC2%20pins%20cannot%20be,using%20an%20ADC1%20GPIO%20instead.

@@ -120,11 +120,10 @@ void update_ip_address() {
 // declare reset function at address 0
 void(* reset_device) (void) = 0;
 
-char* prepare_data_buffer() {
-
-  update_ip_address();
+char* prepare_data_buffer(bool csv=0, bool add_header=0) {
 
   char network_state[10];
+  update_ip_address();
 
 #ifdef GSM_ENABLED
   sprintf(network_state, "\"%hu, %hu, %hu\"", wifi_state, gsm.state, server_sync.state);
@@ -132,58 +131,87 @@ char* prepare_data_buffer() {
   sprintf(network_state, "\"%hu, %hu\"", wifi_state, server_sync.state);
 #endif
 
+  if (csv > 0) {
+    if (add_header > 0) {
+      sprintf(server_sync.shared_buffer,
+        "timestamp,config_devType,config_devId,config_workmode,config_mac,"
+        "adc_1,adc_2,adc_3,adc_4,adc_5,adc_6,"
 #ifdef DHT_ENABLED
-  sprintf(
-    server_sync.shared_buffer,
-    "{"
-    "\"timestamp\": %u,"
-    "\"config\": { \"devType\": \"%s\", \"devId\": %u, \"workmode\": %hu, \"mac\": \"%s\" },"
-    "\"adc\": { \"1\": %u, \"2\": %u, \"3\": %u, \"4\": %u, \"5\": %u, \"6\": %u },"
-    "\"dht\": { \"state\": %hu, \"temperature\": %.2f, \"humidity\": %.2f, \"hic\": %.2f },"
-    "\"meters\": { \"1\": %.2f, \"2\": %.2f, \"3\": %.2f, \"4\": %.2f, \"5\": %.2f, \"6\": %.2f },"
-    "\"network\": { \"state\": %s, \"ip\": \"%hu.%hu.%hu.%hu\", \"tts\": %u }"
-    "}",
-    dev_config.data.timestamp,
-    DEVICE_TYPE, dev_config.data.dev_id, dev_config.data.work_mode, mac_address,
-    meter.adc_rms_values[0], meter.adc_rms_values[1], meter.adc_rms_values[2],
-    meter.adc_rms_values[3], meter.adc_rms_values[4], meter.adc_rms_values[5],
-    dht_meter.dht_state, dht_meter.temperature, dht_meter.humidity, dht_meter.hic,
-    meter.meter_values[0], meter.meter_values[1], meter.meter_values[2],
-    meter.meter_values[3], meter.meter_values[4], meter.meter_values[5],
-    network_state, ip[0], ip[1], ip[2], ip[3], server_sync.get_time_since_sync()
-  );
-#else
-  sprintf(
-    server_sync.shared_buffer,
-    "{"
-    "\"timestamp\": %u,"
-    "\"config\": { \"devType\": \"%s\", \"devId\": %u, \"workmode\": %hu, \"mac\": \"%s\" },"
-    "\"adc\": { \"1\": %u, \"2\": %u, \"3\": %u, \"4\": %u, \"5\": %u, \"6\": %u },"
-    "\"meters\": { \"1\": %.2f, \"2\": %.2f, \"3\": %.2f, \"4\": %.2f, \"5\": %.2f, \"6\": %.2f },"
-    "\"network\": { \"state\": %s, \"ip\": \"%hu.%hu.%hu.%hu\", \"tts\": %u }"
-    "}",
-    dev_config.data.timestamp,
-    DEVICE_TYPE, dev_config.data.dev_id, dev_config.data.work_mode, mac_address,
-    meter.adc_rms_values[0], meter.adc_rms_values[1], meter.adc_rms_values[2],
-    meter.adc_rms_values[3], meter.adc_rms_values[4], meter.adc_rms_values[5],
-    meter.meter_values[0], meter.meter_values[1], meter.meter_values[2],
-    meter.meter_values[3], meter.meter_values[4], meter.meter_values[5],
-    network_state, ip[0], ip[1], ip[2], ip[3], server_sync.get_time_since_sync()
-  );
+        "dht_state,dht_temperature,dht_humidity,dht_hic,"
 #endif
+        "meter_1,meter_2,meter_3,meter_4,meter_5,meter_6,"
+        "network_state,network_ip,network_tts\n"
+      );
+    }
+
+    sprintf(server_sync.shared_buffer,
+      "%u,\"%s\",%u,%hu,\"%s\","
+      "%u,%u,%u,%u,%u,%u,"
+#ifdef DHT_ENABLED
+      "%hu,%.2f,%.2f,%.2f,"
+#endif
+      "%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,"
+      "%s,\"%hu.%hu.%hu.%hu\",%u\n",
+      dev_config.data.timestamp, DEVICE_TYPE, dev_config.data.dev_id, dev_config.data.work_mode, mac_address,
+      meter.adc_rms_values[0], meter.adc_rms_values[1], meter.adc_rms_values[2],
+      meter.adc_rms_values[3], meter.adc_rms_values[4], meter.adc_rms_values[5],
+#ifdef DHT_ENABLED
+      dht_meter.dht_state, dht_meter.temperature, dht_meter.humidity, dht_meter.hic,
+#endif
+      meter.meter_values[0], meter.meter_values[1], meter.meter_values[2],
+      meter.meter_values[3], meter.meter_values[4], meter.meter_values[5],
+      network_state, ip[0], ip[1], ip[2], ip[3], server_sync.get_time_since_sync()
+    );
+  } else {
+    sprintf(
+      server_sync.shared_buffer,
+      "{"
+      "\"timestamp\": %u,"
+      "\"config\": { \"devType\": \"%s\", \"devId\": %u, \"workmode\": %hu, \"mac\": \"%s\" },"
+      "\"adc\": { \"1\": %u, \"2\": %u, \"3\": %u, \"4\": %u, \"5\": %u, \"6\": %u },"
+#ifdef DHT_ENABLED
+      "\"dht\": { \"state\": %hu, \"temperature\": %.2f, \"humidity\": %.2f, \"hic\": %.2f },"
+#endif
+      "\"meters\": { \"1\": %.2f, \"2\": %.2f, \"3\": %.2f, \"4\": %.2f, \"5\": %.2f, \"6\": %.2f },"
+      "\"network\": { \"state\": %s, \"ip\": \"%hu.%hu.%hu.%hu\", \"tts\": %u }"
+      "}\n",
+      dev_config.data.timestamp,
+      DEVICE_TYPE, dev_config.data.dev_id, dev_config.data.work_mode, mac_address,
+      meter.adc_rms_values[0], meter.adc_rms_values[1], meter.adc_rms_values[2],
+      meter.adc_rms_values[3], meter.adc_rms_values[4], meter.adc_rms_values[5],
+#ifdef DHT_ENABLED
+      dht_meter.dht_state, dht_meter.temperature, dht_meter.humidity, dht_meter.hic,
+#endif
+      meter.meter_values[0], meter.meter_values[1], meter.meter_values[2],
+      meter.meter_values[3], meter.meter_values[4], meter.meter_values[5],
+      network_state, ip[0], ip[1], ip[2], ip[3], server_sync.get_time_since_sync()
+    );
+  }
   return server_sync.shared_buffer;
 }
 
-char* prepare_modbus_data_buffer(char *modbus_data) {
-  sprintf(
-    server_sync.shared_buffer,
-    "{"
-    "\"timestamp\": %u,"
-    "\"config\":{\"devType\": \"%s\",\"devId\":%u,\"workmode\":%hu,\"mac\":\"%s\"},\"modbus_data\":%s}",
-    dev_config.data.timestamp,
-    DEVICE_TYPE, dev_config.data.dev_id, dev_config.data.work_mode, mac_address,
-    modbus_data
-  );
+char* prepare_modbus_data_buffer(char *modbus_data, bool csv=0, bool add_header=0) {
+
+  if (csv > 0) {
+    if (add_header > 0) {
+      sprintf(server_sync.shared_buffer,
+        "timestamp,config_devType,config_devId,config_workmode,config_mac,"
+        "modbus_data\n",
+        dev_config.data.timestamp, DEVICE_TYPE, dev_config.data.dev_id, dev_config.data.work_mode, mac_address,
+        modbus_data
+      );
+    }
+  } else {
+    sprintf(
+      server_sync.shared_buffer,
+      "{"
+      "\"timestamp\": %u,"
+      "\"config\":{\"devType\": \"%s\",\"devId\":%u,\"workmode\":%hu,\"mac\":\"%s\"},\"modbus_data\":%s}\n",
+      dev_config.data.timestamp,
+      DEVICE_TYPE, dev_config.data.dev_id, dev_config.data.work_mode, mac_address,
+      modbus_data
+    );
+  }
   return server_sync.shared_buffer;
 }
 
@@ -203,7 +231,7 @@ char* prepare_config_data_buffer() {
       "\"slave_1\": [[%hu,%u,%hu],[%hu,%u,%hu],[%hu,%u,%hu],[%hu,%u,%hu],[%hu,%u,%hu]],"
       "\"slave_2\": [[%hu,%u,%hu],[%hu,%u,%hu],[%hu,%u,%hu],[%hu,%u,%hu],[%hu,%u,%hu]],"
       "\"slave_3\": [[%hu,%u,%hu],[%hu,%u,%hu],[%hu,%u,%hu],[%hu,%u,%hu],[%hu,%u,%hu]]"
-      "}}}",
+      "}}}\n",
       dev_config.data.timestamp,
       DEVICE_TYPE, dev_config.data.hw_ver, dev_config.data.sw_ver, dev_config.data.dev_id, mac_address,
       dev_config.data.work_mode, dev_config.data.heartbeat_freq,

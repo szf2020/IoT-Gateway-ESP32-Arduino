@@ -2,8 +2,8 @@
 Push Button:
     
     3V3-----1m----button----1m----Gnd
-                |
-                -----> Pin 19
+                          |
+                          -----> Pin uC
 
 LED Indicator:
 

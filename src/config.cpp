@@ -5,6 +5,20 @@
 #include <Preferences.h>
 
 #define DEVICE_TYPE "IOT-GW-V1"
+
+// #ifdef DEVICE_TYPE "IOT-GW-V1-MODBUS-WIFI"
+// // #define SD_CARD_ENABLED
+// #define LCD_ENABLED
+// #define DHT_ENABLED
+// #define MODBUS_ENABLED
+// #endif
+
+// #ifdef DEVICE_TYPE "IOT-GW-V1-MODBUS-GSM"
+// #define GSM_ENABLED
+// #define SD_CARD_ENABLED
+// #define MODBUS_ENABLED
+// #endif
+
 #define HW_VERSION 1
 #define SW_VERSION 1
 
@@ -15,7 +29,7 @@
 #define MAX_CONNECTING_TIME_SECONDS 300
 
 // SD card
-#define SD_CARD_ENABLED
+// #define SD_CARD_ENABLED
 #define SD_CS_PIN 5
 #define SD_MOSI_PIN 23
 #define SD_MISO_PIN 19
@@ -38,12 +52,12 @@
 #define GSM_PASS ""
 
 // LCD
-// #define LCD_ENABLED
+#define LCD_ENABLED
 #define UI_UPDATE_SECONDS 0
 
 // Digital pin connected to the DHT sensor
-// #define DHT_ENABLED
-#define DHT_PIN 23 // --> 14
+#define DHT_ENABLED
+#define DHT_PIN 14
 #define DHT_TYPE DHT11
 
 enum DevWorkModes {
@@ -52,7 +66,7 @@ enum DevWorkModes {
 };
 
 #define ENABLE_SERIAL 1
-#define DEFAULT_HEARTBEAT_FREQ_SECONDS 30
+#define DEFAULT_HEARTBEAT_FREQ_SECONDS 60
 #define DEFAULT_SERVER_IP "data.okosengineering.com"
 #define DEFAULT_SERVER_PORT 80
 #define DEFAULT_OTA_ADMIN_PASS "admin"
@@ -60,8 +74,8 @@ enum DevWorkModes {
 #define DEFAULT_TIMESTAMP 1652997600 // 25 May 22
 
 // LED stuff
-#define LED_PIN 12 //18 // --> 12
-#define BUTTON_PIN 13 //19 // --> 13
+#define LED_PIN 2
+#define BUTTON_PIN 12
 
 // Meter pins
 #define METER_1_PIN 33
@@ -72,13 +86,13 @@ enum DevWorkModes {
 #define METER_6_PIN 39
 
 // Modbus
-// #define MODBUS_ENABLED
+#define MODBUS_ENABLED
 #define MAX_MODBUS_SLAVES 3
 #define MAX_ADDRESSES_PER_MODBUS_SLAVE 5
 #define MODBUS_BAUDRATE 9600
 #define MODBUS_RX_PIN 16
 #define MODBUS_TX_PIN 17
-#define MODBUS_RTS_PIN 5 // --> 27
+#define MODBUS_RTS_PIN 14
 
 typedef struct {
   uint8_t func_code;
