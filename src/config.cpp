@@ -6,16 +6,16 @@
 
 // #define DEVICE_TYPE "IOT-GW-V1"
 
-#define DEVICE_TYPE "IOT-GW-V1-MODBUS-WIFI"
-#define SD_CARD_ENABLED
-#define LCD_ENABLED
-#define DHT_ENABLED
-#define MODBUS_ENABLED
-
-// #ifdef DEVICE_TYPE "IOT-GW-V1-MODBUS-GSM"
+// #define DEVICE_TYPE "IOT-GW-V1-MODBUS-WIFI"
 // #define SD_CARD_ENABLED
-// #define GSM_ENABLED
+// #define LCD_ENABLED
+// #define DHT_ENABLED
 // #define MODBUS_ENABLED
+
+#define DEVICE_TYPE "IOT-GW-V1-MODBUS-GSM"
+#define SD_CARD_ENABLED
+#define GSM_ENABLED
+#define MODBUS_ENABLED
 
 #define HW_VERSION 1
 #define SW_VERSION 1
@@ -36,14 +36,14 @@
 
 // GSM
 // #define GSM_ENABLED
-#define GSM_POLL_TIME 40000
+#define GSM_POLL_TIME 40
 #define TINY_GSM_MODEM_SIM800
 #define GSM_BAUDRATE 115200
 #define GSM_RX_PIN 26
 #define GSM_TX_PIN 27
-#define GSM_RST_PIN 5 // --> 15
-#define GSM_POWERKEY_PIN 4 // --> 4
-#define GSM_POWER_PIN 23 // --> 25
+#define GSM_RST_PIN 4 // 5
+#define GSM_POWERKEY_PIN 2 // 4
+#define GSM_POWER_PIN 2 // 23
 // Leave empty, if missing user or pass
 #define GSM_APN  ""
 #define GSM_USER ""
@@ -131,6 +131,7 @@ class DevConfig {
 
     DevConfig() {
       this->prefs = NULL;
+      data.timestamp = DEFAULT_TIMESTAMP;
     }
 
     DevConfig(Preferences *prf) {
@@ -143,6 +144,10 @@ class DevConfig {
 
       if (data.heartbeat_freq == 0 || data.heartbeat_freq > 600) {
         data.heartbeat_freq = DEFAULT_HEARTBEAT_FREQ_SECONDS;
+      }
+
+      if (data.timestamp < DEFAULT_TIMESTAMP) {
+        data.timestamp = DEFAULT_TIMESTAMP;
       }
 
       if (!is_valid_server_ip()) {

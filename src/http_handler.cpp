@@ -7,7 +7,18 @@
 
 #define CONTENT_TYPE "application/json"
 
+enum HTTPHandlerState
+{
+  Idle = 0,
+  SendingHeartbeat = 1,
+  SendingData = 2,
+  SendingModbusData = 3,
+  SendingConfigData = 4
+};
+
 class HTTPHandler {
+  public:
+  uint8_t state;
   private:
   char buffer[500];
   String resp_string;
@@ -17,6 +28,7 @@ class HTTPHandler {
   HTTPHandler() {}
   void init(HttpClient *http_client) {
     this->http_client = http_client;
+    this->state = HTTPHandlerState::Idle;
   }
 
   int send_heartbeat(const char* path, uint16_t dev_id, char *dev_mac) {
@@ -30,8 +42,8 @@ class HTTPHandler {
     );
     Serial.println(this->buffer);
     int err = this->http_client->post(path, CONTENT_TYPE, this->buffer);
-    Serial.print("Resp:");
-    Serial.println(err);
+    // Serial.print("Resp:");
+    // Serial.println(err);
     if (err != 0) {
       return err;
     }
@@ -41,6 +53,7 @@ class HTTPHandler {
     Serial.print(err);
     if (err == 200 || err == 201) {
       this->resp_string = this->http_client->responseBody();
+      this->resp_string = this->resp_string.substring(1, this->resp_string.length() - 1);
       Serial.print(" ");
       Serial.println(this->resp_string);
     }
@@ -54,8 +67,8 @@ class HTTPHandler {
     Serial.println(path);
     Serial.println(data);
     int err = this->http_client->post(path, CONTENT_TYPE, data);
-    Serial.print("Resp:");
-    Serial.println(err);
+    // Serial.print("Resp:");
+    // Serial.println(err);
     if (err != 0) {
       return err;
     }
@@ -65,6 +78,7 @@ class HTTPHandler {
     Serial.print(err);
     if (err == 200 || err == 201) {
       this->resp_string = this->http_client->responseBody();
+      this->resp_string = this->resp_string.substring(1, this->resp_string.length() - 1);
       Serial.print(" ");
       Serial.println(this->resp_string);
     }

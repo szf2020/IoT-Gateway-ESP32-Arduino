@@ -435,7 +435,7 @@ void WiFiEvent(WiFiEvent_t event)
   }
 }
 
-void initialise_wifi(void *params)
+void update_wifi(void *params)
 {
 
   while (1)
@@ -489,16 +489,17 @@ void initialise_wifi(void *params)
 }
 
 #ifdef GSM_ENABLED
-void update_http(void *params)
-{
+void update_http_and_sd() {
   uint8_t cmd = 0;
   char *buffer;
-  while (1)
-  {
+  bool time_to_send = server_sync.time_to_send();
 
-    if (ota_in_progress > 0) break;
-
-    bool time_to_send = server_sync.time_to_send();
+  if (time_to_send) {
+    server_sync.send_success();
+    if (http_handler.state == HTTPHandlerState::Idle) {
+      http_handler.state = HTTPHandlerState::SendingHeartbeat;
+    }
+  }
 
 #ifdef SD_CARD_ENABLED
     if (time_to_send) {
@@ -516,54 +517,75 @@ void update_http(void *params)
     if (gsm.state == GSMState::GPRSConnected) {
       http_handler.poll();
       server_sync.state = ServerConnectionState::Connected;
+    } else {
+      server_sync.state = ServerConnectionState::Disconnected;
     }
 
-    if (time_to_send && gsm.state == GSMState::GPRSConnected && server_sync.state == ServerConnectionState::Connected)
+    if (
+      http_handler.state > HTTPHandlerState::Idle
+      && server_sync.state == ServerConnectionState::Connected
+    )
     {
       int resp;
-      resp = http_handler.send_heartbeat(HEARTBEAT_DATA_PATH, dev_config.data.dev_id, mac_address);
-      server_sync.send_success();
-      if (resp == 200 || resp == 201) {
-        server_sync.process_response(
-          http_handler.get_response()
-        );
-      }
-      if (dev_config.data.work_mode == SIMPLE_CLIENT) {
-        buffer = prepare_data_buffer();
-        resp = http_handler.send_data(DATA_PATH, buffer);
+      if (http_handler.state == HTTPHandlerState::SendingHeartbeat) {
+        vTaskDelay(1);
+        resp = http_handler.send_heartbeat(HEARTBEAT_DATA_PATH, dev_config.data.dev_id, mac_address);
         if (resp == 200 || resp == 201) {
-          server_sync.process_response(
+          cmd = server_sync.process_response(
             http_handler.get_response()
           );
+          vTaskDelay(1);
+          if (cmd == 4) {
+            http_handler.state = HTTPHandlerState::SendingData;
+          } else if (cmd == 2 || cmd == 3 || cmd == 5) {
+            http_handler.state = HTTPHandlerState::SendingConfigData;
+          }
         }
+        if (dev_config.data.work_mode == SIMPLE_CLIENT) {
+          http_handler.state = HTTPHandlerState::SendingData;
+        }
+      } else if (http_handler.state == HTTPHandlerState::SendingData) {
+          buffer = prepare_data_buffer();
+          resp = http_handler.send_data(DATA_PATH, buffer);
+          vTaskDelay(1);
+          if (resp == 200 || resp == 201) {
+            server_sync.process_response(
+              http_handler.get_response()
+            );
+            vTaskDelay(1);
+          }
+#ifdef MODBUS_ENABLED
+          http_handler.state = HTTPHandlerState::SendingModbusData;
+#else
+          http_handler.state = HTTPHandlerState::Idle;
+#endif
+      }
+      else if (http_handler.state == HTTPHandlerState::SendingModbusData) {
 #ifdef MODBUS_ENABLED
         buffer = modbus_handler.update();
         buffer = prepare_modbus_data_buffer(buffer);
         Serial.print("Modbus: ");
         Serial.println(buffer);
         resp = http_handler.send_data(DATA_PATH, buffer);
-          if (resp == 200 || resp == 201) {
+        vTaskDelay(1);
+        if (resp == 200 || resp == 201) {
           server_sync.process_response(
             http_handler.get_response()
           );
+          vTaskDelay(1);
         }
+        http_handler.state = HTTPHandlerState::Idle;
 #endif
-        if (cmd == 0) {
-        } else if (cmd == 4) {
-          // Send data
-        } else if (cmd == 2 || cmd == 3 || cmd == 5) {
-          buffer = prepare_config_data_buffer();
-          resp = http_handler.send_data(DATA_PATH, buffer);
-          // Config is updated. Reset device
+      } else if (http_handler.state == HTTPHandlerState::SendingConfigData) {
+        char *buffer = prepare_config_data_buffer();
+        resp = http_handler.send_data(DATA_PATH, buffer);
+        vTaskDelay(1);
+        if (resp == 200 || resp == 201) {
           reset_device();
         }
       }
     }
     vTaskDelay(1000);
-  }
-  /* delete a task when finish,
-  this will never happen because this is infinity loop */
-  vTaskDelete(NULL);
 }
 #else
 void onMessageCallback(WebsocketsMessage message)
@@ -711,11 +733,6 @@ void setup()
 
 #ifdef GSM_ENABLED
   gsm.init(&dev_config, &gsm_modem, &gsm_client);
-  // sprintf(
-  //   ui_buffer,
-  //   "http://%s",
-  //   dev_config.get_server_ip()
-  // );
   http_client = new HttpClient(gsm_client, dev_config.get_server_ip(), dev_config.get_server_port());
   http_handler.init(http_client);
 #endif
@@ -729,8 +746,8 @@ void setup()
 #endif
 
   xTaskCreate(
-      initialise_wifi,   /* Task function. */
-      "initialise_wifi", /* name of task. */
+      update_wifi,   /* Task function. */
+      "update_wifi", /* name of task. */
       10000,              /* Stack size of task */
       NULL,              /* parameter of the task */
       10,                /* priority of the task */
@@ -762,18 +779,10 @@ void setup()
       6,                 /* priority of the task */
       NULL);             /* Task handle to keep track of created task */
 
-#ifdef GSM_ENABLED
-  xTaskCreate(
-      update_http,        /* Task function. */
-      "update_http",      /* name of task. */
-      80000,              /* Stack size of task */
-      NULL,               /* parameter of the task */
-      8,                  /* priority of the task */
-      NULL);              /* Task handle to keep track of created task */
-#else
+#ifndef GSM_ENABLED
   // run callback when messages are received
   web_socket_client.onMessage(onMessageCallback);
-  // run callback when events are occuring
+  // run callback when events are occurring
   web_socket_client.onEvent(onEventsCallback);
 
   xTaskCreate(
@@ -847,11 +856,14 @@ void loop()
   ArduinoOTA.handle();
 
   #ifdef GSM_ENABLED
-    if (ota_in_progress == 0 && gsm_update_counter > GSM_POLL_TIME) {
-      gsm_update_counter = 0;
-      gsm.check_gprs();
+    if (ota_in_progress == 0) {
+      if(gsm_update_counter > GSM_POLL_TIME) {
+        gsm_update_counter = 0;
+        gsm.check_gprs();
+      }
+      gsm_update_counter += 1;
+
+      update_http_and_sd();
     }
-    gsm_update_counter += 1;
-    delay(1);
   #endif
 }

@@ -73,6 +73,8 @@ public:
     String message_str_temp;
     uint8_t str_length, idx;
     message_str.toCharArray(message_data, 200, 0);
+    Serial.print("process_response: ");
+    Serial.println(message_str);
     if (message_str.startsWith(HEARTBEAT_ACK)) {
       Serial.println("process response heartbeat");
       str_length = strlen(message_data);
